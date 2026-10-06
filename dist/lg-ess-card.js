@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.1.6";
+const CARD_VERSION = "1.1.7";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
   "color: white; background: #ff9800; font-weight: 700; border-radius: 3px 0 0 3px;",
@@ -65,6 +65,7 @@ class LgEssCard extends HTMLElement {
   }
 
   setConfig(config) {
+    if (!config) throw new Error("Invalid configuration");
     this._config = {
       title: "LG ESS Solar",
       power_unit: "kW", // "kW" or "W"
@@ -90,12 +91,28 @@ class LgEssCard extends HTMLElement {
     }
   }
 
+  connectedCallback() {
+    if (this._hass && !this._initialized) {
+      this._firstRender();
+    }
+  }
+
   _getEntityState(key) {
     if (!this._hass) return null;
+    // 1. Explicit user overrides in config
     if (this._config.entities && this._config.entities[key]) {
       const eid = this._config.entities[key];
       return this._hass.states[eid] || null;
     }
+    if (this._config[key]) {
+      const eid = this._config[key];
+      return this._hass.states[eid] || null;
+    }
+    if (this._config[`${key}_entity`]) {
+      const eid = this._config[`${key}_entity`];
+      return this._hass.states[eid] || null;
+    }
+    // 2. Auto-discovery via candidates
     const candidates = DEFAULT_ENTITY_PAIRS[key] || [];
     for (const eid of candidates) {
       if (this._hass.states[eid]) {
@@ -815,7 +832,7 @@ class LgEssCard extends HTMLElement {
                 <path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,16.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,22L9.59,18.56C10.33,18.83 11.14,19 12,19C12.82,19 13.63,18.83 14.37,18.56L12,22Z"/>
               </svg>
             </div>
-            <h2 class="card-title">${this._config.title}</h2>
+            <h2 class="card-title" id="card-title">${this._config.title}</h2>
           </div>
           <div class="status-pill">
             <span class="status-dot" id="status-dot"></span>
@@ -982,7 +999,7 @@ class LgEssCard extends HTMLElement {
         </div>
 
         <!-- Optional: PV Strings Drawer -->
-        ${this._config.show_strings ? `
+        ${this._config.show_strings !== false ? `
           <div class="strings-drawer" id="strings-drawer">
             <div class="strings-toggle" id="strings-toggle">
               <span>☀️ PV Strings (<span id="strings-count">2</span> Stränge)</span>
@@ -1009,7 +1026,7 @@ class LgEssCard extends HTMLElement {
         ` : ''}
 
         <!-- Optional: KPI Tagesstatistiken -->
-        ${this._config.show_stats ? `
+        ${this._config.show_stats !== false ? `
           <div class="stats-grid">
             <div class="stat-card" id="stat-autarky">
               <div class="gauge-ring">
@@ -1061,7 +1078,7 @@ class LgEssCard extends HTMLElement {
         ` : ''}
 
         <!-- Optional: Quick Controls Bar -->
-        ${this._config.show_controls ? `
+        ${this._config.show_controls !== false ? `
           <div class="controls-bar">
             <div class="btn-ctrl" id="btn-winter">
               <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -1106,6 +1123,10 @@ class LgEssCard extends HTMLElement {
 
   _update() {
     if (!this._hass || !this.shadowRoot || !this._initialized) return;
+
+    // Title
+    const titleEl = this.shadowRoot.getElementById("card-title");
+    if (titleEl && this._config.title) titleEl.textContent = this._config.title;
 
     // Live Power Values (in kW)
     const pvPower = this._getNumericValue("pv_total");
@@ -1311,7 +1332,7 @@ class LgEssCard extends HTMLElement {
     }
 
     // 8. PV Strings Updates
-    if (this._config.show_strings) {
+    if (this._config.show_strings !== false) {
       const pv1P = this._getNumericValue("pv1");
       const pv1V = this._getNumericValue("pv1_voltage");
       const pv2P = this._getNumericValue("pv2");
@@ -1344,7 +1365,7 @@ class LgEssCard extends HTMLElement {
     }
 
     // 9. KPI Stats Updates
-    if (this._config.show_stats) {
+    if (this._config.show_stats !== false) {
       const autarkyPath = this.shadowRoot.getElementById("autarky-path");
       if (autarkyPath) autarkyPath.setAttribute("stroke-dasharray", `${Math.min(100, Math.max(0, autarky))}, 100`);
       const autarkyText = this.shadowRoot.getElementById("autarky-text");
@@ -1370,7 +1391,7 @@ class LgEssCard extends HTMLElement {
     }
 
     // 10. Controls Updates
-    if (this._config.show_controls) {
+    if (this._config.show_controls !== false) {
       const btnWinter = this.shadowRoot.getElementById("btn-winter");
       if (btnWinter) btnWinter.className = `btn-ctrl ${winterModeState ? 'active-blue' : ''}`;
       const btnWinterText = this.shadowRoot.getElementById("btn-winter-text");
@@ -1409,25 +1430,72 @@ class LgEssCardEditor extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._config = {};
+    this._rendered = false;
   }
 
   setConfig(config) {
-    this._config = config;
-    this._render();
+    this._config = config || {};
+    if (!this._rendered) {
+      this._render();
+    } else {
+      this._updateInputs();
+    }
+  }
+
+  set hass(hass) {
+    this._hass = hass;
   }
 
   _valueChanged(ev) {
     if (!this._config) return;
     const target = ev.target;
-    const field = target.configValue;
+    const field = target.dataset.config;
+    if (!field) return;
+
     const value = target.type === "checkbox" ? target.checked : target.value;
-    const newConfig = { ...this._config, [field]: value };
+    if (this._config[field] === value) return;
+
+    const newConfig = {
+      ...this._config,
+      [field]: value,
+    };
+    this._config = newConfig;
+
     const event = new CustomEvent("config-changed", {
       bubbles: true,
       composed: true,
       detail: { config: newConfig },
     });
     this.dispatchEvent(event);
+  }
+
+  _updateInputs() {
+    const root = this.shadowRoot;
+    if (!root) return;
+    const inpTitle = root.getElementById("inp-title");
+    if (inpTitle && document.activeElement !== inpTitle) {
+      inpTitle.value = this._config.title ?? "LG ESS Solar";
+    }
+    const inpUnit = root.getElementById("inp-unit");
+    if (inpUnit) {
+      inpUnit.value = this._config.power_unit || "kW";
+    }
+    const chkStrings = root.getElementById("chk-strings");
+    if (chkStrings) {
+      chkStrings.checked = this._config.show_strings !== false;
+    }
+    const chkStats = root.getElementById("chk-stats");
+    if (chkStats) {
+      chkStats.checked = this._config.show_stats !== false;
+    }
+    const chkControls = root.getElementById("chk-controls");
+    if (chkControls) {
+      chkControls.checked = this._config.show_controls !== false;
+    }
+    const chkAnim = root.getElementById("chk-anim");
+    if (chkAnim) {
+      chkAnim.checked = this._config.animation !== false;
+    }
   }
 
   _render() {
@@ -1464,34 +1532,40 @@ class LgEssCardEditor extends HTMLElement {
           gap: 8px;
           font-size: 0.88rem;
           cursor: pointer;
+          user-select: none;
+        }
+        .checkbox-row input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
         }
       </style>
       <div class="editor-form">
         <div class="form-row">
-          <label>Kartentitel</label>
-          <input type="text" .value="${this._config.title || 'LG ESS Solar'}" .configValue="${'title'}" id="inp-title" />
+          <label for="inp-title">Kartentitel</label>
+          <input type="text" id="inp-title" data-config="title" value="${this._config.title || 'LG ESS Solar'}" />
         </div>
         <div class="form-row">
-          <label>Leistungseinheit</label>
-          <select .configValue="${'power_unit'}" id="inp-unit">
+          <label for="inp-unit">Leistungseinheit</label>
+          <select id="inp-unit" data-config="power_unit">
             <option value="kW" ${this._config.power_unit === 'kW' ? 'selected' : ''}>kW (Kilowatt)</option>
             <option value="W" ${this._config.power_unit === 'W' ? 'selected' : ''}>W (Watt)</option>
           </select>
         </div>
         <label class="checkbox-row">
-          <input type="checkbox" ?checked="${this._config.show_strings !== false}" .configValue="${'show_strings'}" id="chk-strings" />
+          <input type="checkbox" id="chk-strings" data-config="show_strings" ${this._config.show_strings !== false ? 'checked' : ''} />
           <span>PV-Strings Detailschublade anzeigen</span>
         </label>
         <label class="checkbox-row">
-          <input type="checkbox" ?checked="${this._config.show_stats !== false}" .configValue="${'show_stats'}" id="chk-stats" />
+          <input type="checkbox" id="chk-stats" data-config="show_stats" ${this._config.show_stats !== false ? 'checked' : ''} />
           <span>Tagesstatistiken (Autarkie & Eigenverbrauch) anzeigen</span>
         </label>
         <label class="checkbox-row">
-          <input type="checkbox" ?checked="${this._config.show_controls !== false}" .configValue="${'show_controls'}" id="chk-controls" />
+          <input type="checkbox" id="chk-controls" data-config="show_controls" ${this._config.show_controls !== false ? 'checked' : ''} />
           <span>Schalterleiste (Wintermodus & Schnellladung) anzeigen</span>
         </label>
         <label class="checkbox-row">
-          <input type="checkbox" ?checked="${this._config.animation !== false}" .configValue="${'animation'}" id="chk-anim" />
+          <input type="checkbox" id="chk-anim" data-config="animation" ${this._config.animation !== false ? 'checked' : ''} />
           <span>Animierte Energiefluss-Punkte anzeigen</span>
         </label>
       </div>
@@ -1499,7 +1573,12 @@ class LgEssCardEditor extends HTMLElement {
 
     this.shadowRoot.querySelectorAll("input, select").forEach((elem) => {
       elem.addEventListener("change", (ev) => this._valueChanged(ev));
+      if (elem.type === "text") {
+        elem.addEventListener("input", (ev) => this._valueChanged(ev));
+      }
     });
+
+    this._rendered = true;
   }
 }
 
