@@ -24,8 +24,8 @@
     </radialGradient>
 
     <radialGradient id="grid-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#488fc2" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#488fc2" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#8353d1" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#8353d1" stop-opacity="0"/>
     </radialGradient>
 
     <radialGradient id="house-glow" cx="50%" cy="50%" r="50%">
@@ -80,41 +80,26 @@
     <path id="flow-solar-batt" d="M 270,171 L 270,269" stroke="#f06292" stroke-width="2.5" fill="none"/>
 
     <!-- Solar to Grid (Curve) -->
-    <path id="flow-solar-grid" d="M 252,169 C 252,202 180,202 134,202" stroke="#488fc2" stroke-width="2.5" fill="none"/>
+    <path id="flow-solar-grid" d="M 252,169 C 252,202 180,202 134,202" stroke="#8353d1" stroke-width="2.5" fill="none"/>
 
     <!-- Solar to Home (Curve) -->
     <path id="flow-solar-home" d="M 288,169 C 288,202 360,202 406,202" stroke="#ff9800" stroke-width="2.5" fill="none"/>
 
-    <!-- Animated Particles -->
-    <circle r="4" fill="#488fc2">
+    <!-- Animated Particles (Exactly 1 round dot per line) -->
+    <circle r="4.5" fill="#8353d1">
       <animateMotion dur="2.4s" repeatCount="indefinite" calcMode="linear">
         <mpath href="#flow-solar-grid"/>
       </animateMotion>
     </circle>
-    <circle r="4" fill="#488fc2">
-      <animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite" calcMode="linear">
-        <mpath href="#flow-solar-grid"/>
-      </animateMotion>
-    </circle>
 
-    <circle r="4" fill="#ff9800">
+    <circle r="4.5" fill="#ff9800">
       <animateMotion dur="2.6s" repeatCount="indefinite" calcMode="linear">
         <mpath href="#flow-solar-home"/>
       </animateMotion>
     </circle>
-    <circle r="4" fill="#ff9800">
-      <animateMotion dur="2.6s" begin="-1.3s" repeatCount="indefinite" calcMode="linear">
-        <mpath href="#flow-solar-home"/>
-      </animateMotion>
-    </circle>
 
-    <circle r="4" fill="#f06292">
+    <circle r="4.5" fill="#f06292">
       <animateMotion dur="2.5s" repeatCount="indefinite" calcMode="linear">
-        <mpath href="#flow-solar-batt"/>
-      </animateMotion>
-    </circle>
-    <circle r="4" fill="#f06292">
-      <animateMotion dur="2.5s" begin="-1.25s" repeatCount="indefinite" calcMode="linear">
         <mpath href="#flow-solar-batt"/>
       </animateMotion>
     </circle>
@@ -123,42 +108,42 @@
     <!-- 1. SOLAR NODE (TOP CENTER) X=270, Y=135        -->
     <!-- ============================================== -->
     <g transform="translate(270, 135)">
-      <circle cx="0" cy="0" r="36" fill="#24242e" stroke="#ff9800" stroke-width="2.5"/>
+      <circle cx="0" cy="0" r="36" fill="rgba(255, 152, 0, 0.12)" stroke="#ff9800" stroke-width="2.5"/>
       <!-- Sun Icon -->
       <path d="M 0,-14 A 5,5 0 0,1 5,-9 A 5,5 0 0,1 0,-4 A 5,5 0 0,1 -5,-9 A 5,5 0 0,1 0,-14 M 0,-21 L 1.8,-17.5 C 1.2,-17.8 0.6,-17.9 0,-17.9 C -0.6,-17.9 -1.2,-17.8 -1.8,-17.5 L 0,-21 M -8,-17 L -5,-15.5 M 8,-17 L 5,-15.5" stroke="#ff9800" stroke-width="1.8" fill="none" stroke-linecap="round"/>
       <text x="0" y="8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#ffffff" text-anchor="middle">4.85 kW</text>
-      <text x="0" y="-45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">SOLAR</text>
+      <text x="0" y="-45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#ff9800" text-anchor="middle" letter-spacing="0.4">SOLAR</text>
     </g>
 
     <!-- ============================================== -->
     <!-- 2. GRID NODE (LEFT) X=100, Y=220               -->
     <!-- ============================================== -->
     <g transform="translate(100, 220)">
-      <circle cx="0" cy="0" r="36" fill="#24242e" stroke="#488fc2" stroke-width="2.5"/>
-      <path d="M -7,-12 L 0,-16 L 7,-12 M -5,-7 L 5,-7 M -3,-1 L 3,-1 M 0,-16 L -5,3 M 0,-16 L 5,3" stroke="#488fc2" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="36" fill="rgba(131, 83, 209, 0.12)" stroke="#8353d1" stroke-width="2.5"/>
+      <path d="M -7,-12 L 0,-16 L 7,-12 M -5,-7 L 5,-7 M -3,-1 L 3,-1 M 0,-16 L -5,3 M 0,-16 L 5,3" stroke="#8353d1" stroke-width="1.6" fill="none" stroke-linecap="round"/>
       <g transform="translate(-16, 7)">
-        <path d="M 2,-3 L -2,0 L 2,3 M -2,0 L 5,0" stroke="#488fc2" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M 2,-3 L -2,0 L 2,3 M -2,0 L 5,0" stroke="#8353d1" stroke-width="1.5" stroke-linecap="round" fill="none"/>
       </g>
-      <text x="5" y="9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="800" fill="#488fc2" text-anchor="middle">2.10 kW</text>
-      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">EINSPEISUNG</text>
+      <text x="5" y="9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="800" fill="#8353d1" text-anchor="middle">2.10 kW</text>
+      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#8353d1" text-anchor="middle" letter-spacing="0.4">EINSPEISUNG</text>
     </g>
 
     <!-- ============================================== -->
     <!-- 3. HOME NODE (RIGHT) X=440, Y=220              -->
     <!-- ============================================== -->
     <g transform="translate(440, 220)">
-      <circle cx="0" cy="0" r="36" fill="#24242e"/>
+      <circle cx="0" cy="0" r="36" fill="rgba(2, 132, 199, 0.12)" stroke="#0284c7" stroke-width="2.5"/>
       <circle cx="0" cy="0" r="36" fill="none" stroke="#ff9800" stroke-width="3"/>
-      <path d="M 0,-14 L -8,-7 L -5,-7 L -5,1 L 5,1 L 5,-7 L 8,-7 Z" fill="#f3f4f6"/>
+      <path d="M 0,-14 L -8,-7 L -5,-7 L -5,1 L 5,1 L 5,-7 L 8,-7 Z" fill="#38bdf8"/>
       <text x="0" y="13" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#ffffff" text-anchor="middle">1.30 kW</text>
-      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">VERBRAUCH</text>
+      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#38bdf8" text-anchor="middle" letter-spacing="0.4">VERBRAUCH</text>
     </g>
 
     <!-- ============================================== -->
     <!-- 4. BATTERY NODE (BOTTOM CENTER) X=270, Y=305   -->
     <!-- ============================================== -->
     <g transform="translate(270, 305)">
-      <circle cx="0" cy="0" r="36" fill="#24242e" stroke="#f06292" stroke-width="2.5"/>
+      <circle cx="0" cy="0" r="36" fill="rgba(240, 98, 146, 0.12)" stroke="#f06292" stroke-width="2.5"/>
       <g transform="translate(-16, -15)">
         <rect x="0" y="1" width="11" height="6" rx="1.5" fill="none" stroke="#f06292" stroke-width="1.2"/>
         <rect x="11" y="2.5" width="1.5" height="3" fill="#f06292"/>
@@ -168,7 +153,7 @@
         <path d="M 0,-3 L 0,4 M -3,1 L 0,4 L 3,1" stroke="#f06292" stroke-width="1.5" stroke-linecap="round" fill="none"/>
       </g>
       <text x="5" y="11" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="800" fill="#f06292" text-anchor="middle">1.45 kW</text>
-      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">BATTERIE</text>
+      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#f06292" text-anchor="middle" letter-spacing="0.4">BATTERIE</text>
     </g>
   </g>
 

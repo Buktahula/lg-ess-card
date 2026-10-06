@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.1.4";
+const CARD_VERSION = "1.1.5";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
   "color: white; background: #ff9800; font-weight: 700; border-radius: 3px 0 0 3px;",
@@ -51,7 +51,7 @@ const DEFAULT_ENTITY_PAIRS = {
   switch_active: ["switch.active", "switch.lgess_switch_active"],
 };
 
-const CIRCLE_CIRCUMFERENCE = 238.76104; // 2 * PI * 38 (HA Energy Home Circle standard)
+const CIRCLE_CIRCUMFERENCE = 230.91; // 2 * PI * 36.75 (matches 76px outer diameter minus border)
 
 class LgEssCard extends HTMLElement {
   constructor() {
@@ -271,6 +271,7 @@ class LgEssCard extends HTMLElement {
           --batt-out-color: var(--energy-battery-out-color, #4db6ac);
           --grid-buy-color: var(--energy-grid-consumption-color, #488fc2);
           --grid-sell-color: var(--energy-grid-return-color, #8353d1);
+          --house-color: var(--energy-non-fossil-color, #0284c7);
 
           /* UI Contrast & Theme Variables */
           --card-radius: var(--ha-card-border-radius, 16px);
@@ -413,7 +414,7 @@ class LgEssCard extends HTMLElement {
           height: 76px;
           border-radius: 50%;
           box-sizing: border-box;
-          border: 2px solid var(--surface-border);
+          border: 2.5px solid var(--surface-border);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -422,50 +423,78 @@ class LgEssCard extends HTMLElement {
           position: relative;
           background: var(--node-surface);
           box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-          transition: border-color 0.25s ease, box-shadow 0.25s ease;
+          transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
         }
 
-        .node-solar .circle {
-          border-color: ${isSolarActive ? "var(--solar-color)" : "var(--surface-border)"};
-          ${isSolarActive ? "box-shadow: 0 0 14px rgba(255, 152, 0, 0.4);" : ""}
+        /* 1. Solar Node */
+        .node-solar .circle.solar-active {
+          border-color: var(--solar-color);
+          background: rgba(255, 152, 0, 0.12);
+          box-shadow: 0 0 14px rgba(255, 152, 0, 0.4);
         }
 
-        .circle.selling {
+        .node-solar .circle.solar-idle {
+          border-color: rgba(255, 152, 0, 0.35);
+          background: rgba(255, 152, 0, 0.05);
+        }
+
+        /* 2. Grid Node */
+        .node-grid .circle.selling {
           border-color: var(--grid-sell-color);
+          background: rgba(131, 83, 209, 0.12);
           box-shadow: 0 0 14px rgba(131, 83, 209, 0.4);
         }
 
-        .circle.buying {
+        .node-grid .circle.buying {
           border-color: var(--grid-buy-color);
+          background: rgba(72, 143, 194, 0.12);
           box-shadow: 0 0 14px rgba(72, 143, 194, 0.4);
         }
 
-        .circle.charging {
+        .node-grid .circle.grid-idle {
+          border-color: rgba(72, 143, 194, 0.35);
+          background: rgba(72, 143, 194, 0.05);
+        }
+
+        /* 3. House Node - 100% Symmetrical 76px Size, Border & Glow */
+        .node-house .circle {
+          border-color: var(--house-color, #0284c7);
+          background: rgba(2, 132, 199, 0.12);
+          box-shadow: 0 0 14px rgba(2, 132, 199, 0.4);
+        }
+
+        /* 4. Battery Node */
+        .node-batt .circle.charging {
           border-color: var(--batt-in-color);
+          background: rgba(240, 98, 146, 0.12);
           box-shadow: 0 0 14px rgba(240, 98, 146, 0.4);
         }
 
-        .circle.discharging {
+        .node-batt .circle.discharging {
           border-color: var(--batt-out-color);
+          background: rgba(77, 182, 172, 0.12);
           box-shadow: 0 0 14px rgba(77, 182, 172, 0.4);
         }
 
-        .node-house .circle {
-          border: 2px solid var(--surface-border);
+        .node-batt .circle.batt-idle {
+          border-color: #10b981;
+          background: rgba(16, 185, 129, 0.10);
+          box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
         }
 
-        /* Home Multi-Arc Ring */
+        /* Home Multi-Arc Ring (sitting seamlessly on top of 76px border) */
         .circle svg.circle-ring {
           position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
+          top: -2.5px;
+          left: -2.5px;
+          width: 76px;
+          height: 76px;
           pointer-events: none;
         }
 
         .circle-ring circle {
           fill: none;
-          stroke-width: 3.5px;
+          stroke-width: 2.5px;
           transition: stroke-dashoffset 0.4s ease, stroke-dasharray 0.4s ease;
         }
 
@@ -511,6 +540,19 @@ class LgEssCard extends HTMLElement {
           margin-top: 0;
           margin-bottom: 4px;
           order: -1;
+          color: var(--solar-color);
+        }
+
+        .node-grid .label {
+          color: ${isGridSelling ? "var(--grid-sell-color)" : isGridBuying ? "var(--grid-buy-color)" : "var(--text-med)"};
+        }
+
+        .node-house .label {
+          color: #38bdf8;
+        }
+
+        .node-batt .label {
+          color: ${isBattCharging ? "var(--batt-in-color)" : isBattDischarging ? "var(--batt-out-color)" : "#10b981"};
         }
 
         .battery-soc {
@@ -869,95 +911,75 @@ class LgEssCard extends HTMLElement {
 
         <!-- Official Home Assistant Energy Distribution Visualizer (100% Symmetrical) -->
         <div class="flow-container">
-          <svg class="flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg class="flow-svg" viewBox="0 0 465 300">
             <!-- Inactive Connecting Lines (Seamless center-to-center connections behind nodes) -->
-            <path class="flow-line" d="M 17,50 L 83,50" />
-            <path class="flow-line" d="M 46,78 C 46,62 32,56 21,56" />
-            <path class="flow-line" d="M 54,78 C 54,62 68,56 79,56" />
-            <path class="flow-line" d="M 46,22 C 46,38 32,44 21,44" />
-            <path class="flow-line" d="M 54,22 C 54,38 68,44 79,44" />
-            <path class="flow-line" d="M 50,18 L 50,82" />
+            <path class="flow-line" d="M 79,150 L 386,150" />
+            <path class="flow-line" d="M 214,234 C 214,186 148,168 98,168" />
+            <path class="flow-line" d="M 251,234 C 251,186 317,168 367,168" />
+            <path class="flow-line" d="M 214,66 C 214,114 148,132 98,132" />
+            <path class="flow-line" d="M 251,66 C 251,114 317,132 367,132" />
+            <path class="flow-line" d="M 232.5,54 L 232.5,246" />
 
             <!-- Active Flow Paths -->
             <!-- Solar to Battery (Vertical) -->
             <path id="path-solar-batt" class="flow-line battery-solar ${hasSolarToBattery ? 'active' : ''}"
-                  d="M 50,18 L 50,82" />
+                  d="M 232.5,54 L 232.5,246" />
 
             <!-- Solar to Grid (Curved) -->
             <path id="path-solar-grid" class="flow-line return ${hasSolarToGrid ? 'active' : ''}"
-                  d="M 46,22 C 46,38 32,44 21,44" />
+                  d="M 214,66 C 214,114 148,132 98,132" />
 
             <!-- Solar to Home (Curved) -->
             <path id="path-solar-home" class="flow-line solar ${hasSolarToHome ? 'active' : ''}"
-                  d="M 54,22 C 54,38 68,44 79,44" />
+                  d="M 251,66 C 251,114 317,132 367,132" />
 
             <!-- Battery to Home (Curved) -->
             <path id="path-batt-home" class="flow-line battery-house ${hasBatteryToHome ? 'active' : ''}"
-                  d="M 54,78 C 54,62 68,56 79,56" />
+                  d="M 251,234 C 251,186 317,168 367,168" />
 
             <!-- Battery to Grid / Grid to Battery -->
             <path id="path-batt-grid" class="flow-line ${hasBatteryToGrid ? 'battery-to-grid active' : hasBatteryFromGrid ? 'battery-from-grid active' : ''}"
-                  d="M 46,78 C 46,62 32,56 21,56" />
+                  d="M 214,234 C 214,186 148,168 98,168" />
 
             <!-- Grid to Home (Horizontal) -->
             <path id="path-grid-home" class="flow-line grid ${hasGridToHome ? 'active' : ''}"
-                  d="M 17,50 L 83,50" />
+                  d="M 79,150 L 386,150" />
 
-            <!-- Animated Motion Dots (Silky smooth, perfectly sized r=1.0) -->
+            <!-- Animated Motion Dots (Silky smooth, exactly 1 dot per active line, perfectly round circle r=4.5) -->
             ${allowAnim && hasSolarToGrid ? `
-              <circle r="1" class="flow-dot return">
+              <circle r="4.5" class="flow-dot return">
                 <animateMotion dur="${getDuration(solarToGrid)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
-                </animateMotion>
-              </circle>
-              <circle r="1" class="flow-dot return">
-                <animateMotion dur="${getDuration(solarToGrid)}s" begin="-${(getDuration(solarToGrid) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
                 </animateMotion>
               </circle>
             ` : ''}
 
             ${allowAnim && hasSolarToHome ? `
-              <circle r="1" class="flow-dot solar">
+              <circle r="4.5" class="flow-dot solar">
                 <animateMotion dur="${getDuration(solarToHome)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
-                </animateMotion>
-              </circle>
-              <circle r="1" class="flow-dot solar">
-                <animateMotion dur="${getDuration(solarToHome)}s" begin="-${(getDuration(solarToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
                 </animateMotion>
               </circle>
             ` : ''}
 
             ${allowAnim && hasSolarToBattery ? `
-              <circle r="1" class="flow-dot battery-solar">
+              <circle r="4.5" class="flow-dot battery-solar">
                 <animateMotion dur="${getDuration(solarToBattery)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
-                </animateMotion>
-              </circle>
-              <circle r="1" class="flow-dot battery-solar">
-                <animateMotion dur="${getDuration(solarToBattery)}s" begin="-${(getDuration(solarToBattery) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
                 </animateMotion>
               </circle>
             ` : ''}
 
             ${allowAnim && hasBatteryToHome ? `
-              <circle r="1" class="flow-dot battery-house">
+              <circle r="4.5" class="flow-dot battery-house">
                 <animateMotion dur="${getDuration(batteryToHome)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
-                </animateMotion>
-              </circle>
-              <circle r="1" class="flow-dot battery-house">
-                <animateMotion dur="${getDuration(batteryToHome)}s" begin="-${(getDuration(batteryToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
                 </animateMotion>
               </circle>
             ` : ''}
 
             ${allowAnim && hasBatteryFromGrid ? `
-              <circle r="1" class="flow-dot battery-from-grid">
+              <circle r="4.5" class="flow-dot battery-from-grid">
                 <animateMotion dur="${getDuration(gridToBattery)}s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
                   <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
                 </animateMotion>
@@ -965,7 +987,7 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasBatteryToGrid ? `
-              <circle r="1" class="flow-dot battery-to-grid">
+              <circle r="4.5" class="flow-dot battery-to-grid">
                 <animateMotion dur="${getDuration(batteryToGrid)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
                 </animateMotion>
@@ -973,13 +995,8 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasGridToHome ? `
-              <circle r="1" class="flow-dot grid">
+              <circle r="4.5" class="flow-dot grid">
                 <animateMotion dur="${getDuration(gridToHome)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
-                </animateMotion>
-              </circle>
-              <circle r="1" class="flow-dot grid">
-                <animateMotion dur="${getDuration(gridToHome)}s" begin="-${(getDuration(gridToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
                 </animateMotion>
               </circle>
@@ -989,7 +1006,7 @@ class LgEssCard extends HTMLElement {
           <!-- 1. Node Solar (Top Center: 50%, 18%) -->
           <div class="node node-solar" id="node-solar">
             <span class="label">Solar</span>
-            <div class="circle">
+            <div class="circle ${isSolarActive ? 'solar-active' : 'solar-idle'}">
               <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--solar-color);">
                 <path d="M12 2L14.39 5.42C13.65 5.15 12.84 5 12 5C11.16 5 10.35 5.15 9.61 5.42L12 2M12 7A5 5 0 0 1 17 12A5 5 0 0 1 12 17A5 5 0 0 1 7 12A5 5 0 0 1 12 7M12 9A3 3 0 0 0 9 12A3 3 0 0 0 12 15A3 3 0 0 0 15 12A3 3 0 0 0 12 9Z" />
               </svg>
@@ -999,7 +1016,7 @@ class LgEssCard extends HTMLElement {
 
           <!-- 2. Node Grid (Left: 17%, 50%) -->
           <div class="node node-grid" id="node-grid">
-            <div class="circle ${isGridSelling ? 'selling' : isGridBuying ? 'buying' : ''}">
+            <div class="circle ${isGridSelling ? 'selling' : isGridBuying ? 'buying' : 'grid-idle'}">
               <svg class="node-icon" viewBox="0 0 24 24" style="color: ${isGridSelling ? 'var(--grid-sell-color)' : isGridBuying ? 'var(--grid-buy-color)' : 'var(--text-med)'};">
                 <path d="M8.29,6.29L12,2.59L15.71,6.29L14.29,7.71L13,6.41V9.3L15.78,11H18V13H15.93L17.93,18H20V20H17.8L19.8,22H17.15L15.35,20H8.65L6.85,22H4.2L6.2,20H4V18H6.07L8.07,13H6V11H8.22L11,9.3V6.41L9.71,7.71L8.29,6.29M11,11.15L8.85,12.5H15.15L13,11.15V11H11V11.15M8.38,14.5L6.98,18H17.02L15.62,14.5H8.38Z"/>
               </svg>
@@ -1023,27 +1040,19 @@ class LgEssCard extends HTMLElement {
           <!-- 3. Node Home (Right: 83%, 50%) -->
           <div class="node node-house" id="node-house">
             <div class="circle">
-              <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--text-high);">
+              <svg class="node-icon" viewBox="0 0 24 24" style="color: #38bdf8;">
                 <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
               </svg>
               <span class="val">${this._formatPower(housePower)}</span>
 
-              <svg class="circle-ring" viewBox="0 0 80 80">
+              <svg class="circle-ring" viewBox="0 0 76 76">
                 ${hasRing ? `
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="37"
-                    fill="none"
-                    stroke="var(--surface-border)"
-                    stroke-width="2.5"
-                  />
                   ${solarArc > 0 ? `
                     <circle
                       class="solar"
-                      cx="40"
-                      cy="40"
-                      r="37"
+                      cx="38"
+                      cy="38"
+                      r="36.75"
                       stroke-dasharray="${solarArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
                       stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
                       shape-rendering="geometricPrecision"
@@ -1052,9 +1061,9 @@ class LgEssCard extends HTMLElement {
                   ${battArc > 0 ? `
                     <circle
                       class="battery"
-                      cx="40"
-                      cy="40"
-                      r="37"
+                      cx="38"
+                      cy="38"
+                      r="36.75"
                       stroke-dasharray="${battArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - battArc).toFixed(2)}"
                       stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - battArc - (solarArc || 0)).toFixed(2)}"
                       shape-rendering="geometricPrecision"
@@ -1063,9 +1072,9 @@ class LgEssCard extends HTMLElement {
                   ${gridArc > 0 ? `
                     <circle
                       class="grid"
-                      cx="40"
-                      cy="40"
-                      r="37"
+                      cx="38"
+                      cy="38"
+                      r="36.75"
                       stroke-dasharray="${gridArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - gridArc).toFixed(2)}"
                       stroke-dashoffset="0"
                       shape-rendering="geometricPrecision"
@@ -1079,8 +1088,8 @@ class LgEssCard extends HTMLElement {
 
           <!-- 4. Node Battery (Bottom Center: 50%, 82%) -->
           <div class="node node-batt" id="node-batt">
-            <div class="circle ${isBattCharging ? 'charging' : isBattDischarging ? 'discharging' : ''}">
-              <div class="battery-soc" style="color: ${isBattCharging ? 'var(--batt-in-color)' : isBattDischarging ? 'var(--batt-out-color)' : 'var(--text-high)'};">
+            <div class="circle ${isBattCharging ? 'charging' : isBattDischarging ? 'discharging' : 'batt-idle'}">
+              <div class="battery-soc" style="color: ${isBattCharging ? 'var(--batt-in-color)' : isBattDischarging ? 'var(--batt-out-color)' : '#10b981'};">
                 <svg viewBox="0 0 24 24">
                   ${this._getBatteryIcon(soc, isBattCharging)}
                 </svg>
@@ -1097,7 +1106,7 @@ class LgEssCard extends HTMLElement {
                   ${this._formatPower(battDischarge)}
                 </span>
               ` : `
-                <span class="battery-idle">${this._formatPower(0)}</span>
+                <span class="battery-idle" style="color: #10b981;">${this._formatPower(0)}</span>
               `}
             </div>
             <span class="label">Batterie</span>
