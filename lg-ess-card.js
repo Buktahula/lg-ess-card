@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.1.2";
+const CARD_VERSION = "1.1.3";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
   "color: white; background: #ff9800; font-weight: 700; border-radius: 3px 0 0 3px;",
@@ -251,24 +251,43 @@ class LgEssCard extends HTMLElement {
     const pv3V = this._getNumericValue("pv3_voltage");
     const hasPv3 = pv3P > 0 || pv3V > 0 || this._getEntityState("pv3") !== null;
 
+    // Theme & Dark Mode Adaptive Tokens
+    const isDark = this._hass?.themes?.darkMode ?? true;
+    const defaultNodeBg = isDark ? "#22222a" : "#ffffff";
+    const defaultSurfaceElevated = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
+    const defaultSurfaceBorder = isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(0, 0, 0, 0.12)";
+    const defaultFlowInactive = isDark ? "rgba(200, 205, 225, 0.28)" : "rgba(160, 165, 180, 0.35)";
+    const defaultTextHigh = isDark ? "#f8fafc" : "#111827";
+    const defaultTextMed = isDark ? "#94a3b8" : "#64748b";
+    const defaultTextMuted = isDark ? "#64748b" : "#9ca3af";
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
-          /* Official Home Assistant Energy Dashboard Colors & Theme CSS Variables */
-          --energy-solar-color: var(--energy-solar-color, #ff9800);
-          --energy-battery-in-color: var(--energy-battery-in-color, #f06292);
-          --energy-battery-out-color: var(--energy-battery-out-color, #4db6ac);
-          --energy-grid-consumption-color: var(--energy-grid-consumption-color, #5a6fe8);
-          --energy-grid-return-color: var(--energy-grid-return-color, #488fc2);
+          /* Official Home Assistant Energy Dashboard Colors & Fallbacks (Zero Cycles) */
+          --solar-color: var(--energy-solar-color, #ff9800);
+          --batt-in-color: var(--energy-battery-in-color, #f06292);
+          --batt-out-color: var(--energy-battery-out-color, #4db6ac);
+          --grid-buy-color: var(--energy-grid-consumption-color, #488fc2);
+          --grid-sell-color: var(--energy-grid-return-color, #8353d1);
+
+          /* UI Contrast & Theme Variables */
           --card-radius: var(--ha-card-border-radius, 16px);
+          --node-surface: var(--card-background-color, ${defaultNodeBg});
+          --surface-elevated: var(--secondary-background-color, ${defaultSurfaceElevated});
+          --surface-border: var(--divider-color, ${defaultSurfaceBorder});
+          --flow-inactive: var(--energy-line-inactive-color, ${defaultFlowInactive});
+          --text-high: var(--primary-text-color, ${defaultTextHigh});
+          --text-med: var(--secondary-text-color, ${defaultTextMed});
+          --text-muted: var(--disabled-text-color, ${defaultTextMuted});
         }
 
         ha-card {
           border-radius: var(--card-radius);
-          box-shadow: var(--ha-card-box-shadow, 0 4px 20px rgba(0, 0, 0, 0.2));
-          background: var(--ha-card-background, var(--card-background-color, #1e1e24));
-          color: var(--primary-text-color, #f3f4f6);
+          box-shadow: var(--ha-card-box-shadow, 0 4px 20px rgba(0, 0, 0, 0.25));
+          background: var(--ha-card-background, var(--card-background-color, #1a1a20));
+          color: var(--text-high);
           padding: 18px 20px;
           overflow: hidden;
           font-family: var(--paper-font-body1_-_font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
@@ -293,7 +312,7 @@ class LgEssCard extends HTMLElement {
           width: 32px;
           height: 32px;
           border-radius: 8px;
-          background: linear-gradient(135deg, var(--energy-solar-color), #d97706);
+          background: linear-gradient(135deg, var(--solar-color), #d97706);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -305,7 +324,7 @@ class LgEssCard extends HTMLElement {
           font-size: 1.15rem;
           font-weight: 700;
           letter-spacing: -0.01em;
-          color: var(--primary-text-color, #fff);
+          color: var(--text-high);
           margin: 0;
         }
 
@@ -313,20 +332,21 @@ class LgEssCard extends HTMLElement {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: var(--secondary-background-color, rgba(255, 255, 255, 0.08));
+          background: var(--surface-elevated);
+          border: 1px solid var(--surface-border);
           padding: 4px 10px;
           border-radius: 9999px;
           font-size: 0.75rem;
           font-weight: 600;
-          color: var(--secondary-text-color, #9ca3af);
+          color: var(--text-med);
         }
 
         .status-dot {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: ${activeState ? "var(--energy-grid-return-color, #10b981)" : "#ef4444"};
-          box-shadow: 0 0 8px ${activeState ? "var(--energy-grid-return-color, #10b981)" : "#ef4444"};
+          background: ${activeState ? "#10b981" : "#ef4444"};
+          box-shadow: 0 0 8px ${activeState ? "#10b981" : "#ef4444"};
         }
 
         /* ============================================================== */
@@ -393,57 +413,51 @@ class LgEssCard extends HTMLElement {
           height: 76px;
           border-radius: 50%;
           box-sizing: border-box;
-          border: 2.5px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+          border: 2px solid var(--surface-border);
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           text-align: center;
           position: relative;
-          background: var(--ha-card-background, var(--card-background-color, #1e1e24));
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+          background: var(--node-surface);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
           transition: border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
         .node-solar .circle {
-          border-color: var(--energy-solar-color);
-          ${isSolarActive ? "box-shadow: 0 0 14px rgba(255, 152, 0, 0.35);" : ""}
+          border-color: ${isSolarActive ? "var(--solar-color)" : "var(--surface-border)"};
+          ${isSolarActive ? "box-shadow: 0 0 14px rgba(255, 152, 0, 0.4);" : ""}
         }
 
         .circle.selling {
-          border-color: var(--energy-grid-return-color);
-          box-shadow: 0 0 14px rgba(72, 143, 194, 0.35);
+          border-color: var(--grid-sell-color);
+          box-shadow: 0 0 14px rgba(131, 83, 209, 0.4);
         }
 
         .circle.buying {
-          border-color: var(--energy-grid-consumption-color);
-          box-shadow: 0 0 14px rgba(90, 111, 232, 0.35);
+          border-color: var(--grid-buy-color);
+          box-shadow: 0 0 14px rgba(72, 143, 194, 0.4);
         }
 
         .circle.charging {
-          border-color: var(--energy-battery-in-color);
-          box-shadow: 0 0 14px rgba(240, 98, 146, 0.35);
+          border-color: var(--batt-in-color);
+          box-shadow: 0 0 14px rgba(240, 98, 146, 0.4);
         }
 
         .circle.discharging {
-          border-color: var(--energy-battery-out-color);
-          box-shadow: 0 0 14px rgba(77, 182, 172, 0.35);
+          border-color: var(--batt-out-color);
+          box-shadow: 0 0 14px rgba(77, 182, 172, 0.4);
         }
 
         .node-house .circle {
-          border-width: 0;
-        }
-
-        .node-house .circle.border {
-          border-width: 2.5px;
-          border-color: var(--divider-color, rgba(255, 255, 255, 0.12));
+          border: 2px solid var(--surface-border);
         }
 
         /* Home Multi-Arc Ring */
         .circle svg.circle-ring {
           position: absolute;
-          top: 0;
-          left: 0;
+          inset: 0;
           width: 100%;
           height: 100%;
           pointer-events: none;
@@ -456,15 +470,15 @@ class LgEssCard extends HTMLElement {
         }
 
         .circle-ring circle.solar {
-          stroke: var(--energy-solar-color);
+          stroke: var(--solar-color);
         }
 
         .circle-ring circle.battery {
-          stroke: var(--energy-battery-out-color);
+          stroke: var(--batt-out-color);
         }
 
         .circle-ring circle.grid {
-          stroke: var(--energy-grid-consumption-color);
+          stroke: var(--grid-buy-color);
         }
 
         .node-icon {
@@ -475,14 +489,15 @@ class LgEssCard extends HTMLElement {
         }
 
         .val {
-          font-size: 0.8rem;
+          font-size: 0.82rem;
           font-weight: 700;
           line-height: 1.2;
           white-space: nowrap;
+          color: var(--text-high);
         }
 
         .label {
-          color: var(--secondary-text-color, #9ca3af);
+          color: var(--text-med);
           font-size: 0.72rem;
           font-weight: 700;
           height: 18px;
@@ -513,15 +528,12 @@ class LgEssCard extends HTMLElement {
           fill: currentColor;
         }
 
-        .battery-in, .return {
+        .battery-in {
           display: inline-flex;
           align-items: center;
           font-size: 0.76rem;
           font-weight: 700;
-        }
-
-        .battery-in {
-          color: var(--energy-battery-in-color);
+          color: var(--batt-in-color);
         }
 
         .battery-out {
@@ -529,17 +541,21 @@ class LgEssCard extends HTMLElement {
           align-items: center;
           font-size: 0.76rem;
           font-weight: 700;
-          color: var(--energy-battery-out-color);
+          color: var(--batt-out-color);
         }
 
         .battery-idle {
           font-size: 0.76rem;
           font-weight: 600;
-          color: var(--secondary-text-color, #9ca3af);
+          color: var(--text-muted);
         }
 
         .return {
-          color: var(--energy-grid-return-color);
+          display: inline-flex;
+          align-items: center;
+          font-size: 0.76rem;
+          font-weight: 700;
+          color: var(--grid-sell-color);
         }
 
         .consumption {
@@ -547,7 +563,13 @@ class LgEssCard extends HTMLElement {
           align-items: center;
           font-size: 0.76rem;
           font-weight: 700;
-          color: var(--energy-grid-consumption-color);
+          color: var(--grid-buy-color);
+        }
+
+        .grid-idle {
+          font-size: 0.76rem;
+          font-weight: 600;
+          color: var(--text-muted);
         }
 
         .small-arrow {
@@ -557,99 +579,109 @@ class LgEssCard extends HTMLElement {
           margin-right: 2px;
         }
 
-        /* SVG Paths */
-        path {
+        /* SVG Paths (Energy Flow Lines) */
+        path.flow-line {
           fill: none;
-          stroke: var(--divider-color, rgba(255, 255, 255, 0.12));
-          stroke-width: 1.5;
+          stroke: var(--flow-inactive);
+          stroke-width: 1.8;
+          vector-effect: non-scaling-stroke;
+          stroke-linecap: round;
           transition: stroke 0.3s ease, stroke-width 0.3s ease;
         }
 
-        path.active.solar {
-          stroke: var(--energy-solar-color);
-          stroke-width: 2.2;
+        path.flow-line.active {
+          stroke-width: 2.5;
         }
 
-        path.active.return {
-          stroke: var(--energy-grid-return-color);
-          stroke-width: 2.2;
+        path.flow-line.active.solar {
+          stroke: var(--solar-color);
         }
 
-        path.active.battery-solar {
-          stroke: var(--energy-battery-in-color);
-          stroke-width: 2.2;
+        path.flow-line.active.return {
+          stroke: var(--grid-sell-color);
         }
 
-        path.active.battery-house {
-          stroke: var(--energy-battery-out-color);
-          stroke-width: 2.2;
+        path.flow-line.active.battery-solar {
+          stroke: var(--batt-in-color);
         }
 
-        path.active.grid {
-          stroke: var(--energy-grid-consumption-color);
-          stroke-width: 2.2;
+        path.flow-line.active.battery-house {
+          stroke: var(--batt-out-color);
         }
 
-        path.active.battery-to-grid {
-          stroke: var(--energy-grid-return-color);
-          stroke-width: 2.2;
+        path.flow-line.active.grid {
+          stroke: var(--grid-buy-color);
         }
 
-        path.active.battery-from-grid {
-          stroke: var(--energy-grid-consumption-color);
-          stroke-width: 2.2;
+        path.flow-line.active.battery-to-grid {
+          stroke: var(--grid-sell-color);
+        }
+
+        path.flow-line.active.battery-from-grid {
+          stroke: var(--grid-buy-color);
         }
 
         /* Moving Particle Dots */
-        circle.solar {
-          stroke-width: 4;
-          stroke: var(--energy-solar-color);
-          fill: var(--energy-solar-color);
+        circle.flow-dot {
+          vector-effect: non-scaling-stroke;
         }
 
-        circle.return {
-          stroke-width: 4;
-          stroke: var(--energy-grid-return-color);
-          fill: var(--energy-grid-return-color);
+        circle.flow-dot.solar {
+          stroke-width: 3.5;
+          stroke: var(--solar-color);
+          fill: var(--solar-color);
+          filter: drop-shadow(0 0 3px var(--solar-color));
         }
 
-        circle.battery-solar {
-          stroke-width: 4;
-          stroke: var(--energy-battery-in-color);
-          fill: var(--energy-battery-in-color);
+        circle.flow-dot.return {
+          stroke-width: 3.5;
+          stroke: var(--grid-sell-color);
+          fill: var(--grid-sell-color);
+          filter: drop-shadow(0 0 3px var(--grid-sell-color));
         }
 
-        circle.battery-house {
-          stroke-width: 4;
-          stroke: var(--energy-battery-out-color);
-          fill: var(--energy-battery-out-color);
+        circle.flow-dot.battery-solar {
+          stroke-width: 3.5;
+          stroke: var(--batt-in-color);
+          fill: var(--batt-in-color);
+          filter: drop-shadow(0 0 3px var(--batt-in-color));
         }
 
-        circle.grid {
-          stroke-width: 4;
-          stroke: var(--energy-grid-consumption-color);
-          fill: var(--energy-grid-consumption-color);
+        circle.flow-dot.battery-house {
+          stroke-width: 3.5;
+          stroke: var(--batt-out-color);
+          fill: var(--batt-out-color);
+          filter: drop-shadow(0 0 3px var(--batt-out-color));
         }
 
-        circle.battery-to-grid {
-          stroke-width: 4;
-          stroke: var(--energy-grid-return-color);
-          fill: var(--energy-grid-return-color);
+        circle.flow-dot.grid {
+          stroke-width: 3.5;
+          stroke: var(--grid-buy-color);
+          fill: var(--grid-buy-color);
+          filter: drop-shadow(0 0 3px var(--grid-buy-color));
         }
 
-        circle.battery-from-grid {
-          stroke-width: 4;
-          stroke: var(--energy-grid-consumption-color);
-          fill: var(--energy-grid-consumption-color);
+        circle.flow-dot.battery-to-grid {
+          stroke-width: 3.5;
+          stroke: var(--grid-sell-color);
+          fill: var(--grid-sell-color);
+          filter: drop-shadow(0 0 3px var(--grid-sell-color));
+        }
+
+        circle.flow-dot.battery-from-grid {
+          stroke-width: 3.5;
+          stroke: var(--grid-buy-color);
+          fill: var(--grid-buy-color);
+          filter: drop-shadow(0 0 3px var(--grid-buy-color));
         }
 
         /* Collapsible Strings Drawer */
         .strings-drawer {
-          background: var(--secondary-background-color, rgba(255, 255, 255, 0.04));
+          background: var(--surface-elevated);
           border-radius: 12px;
           padding: 10px 14px;
           margin-top: 14px;
-          border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.08));
+          border: 1px solid var(--surface-border);
         }
 
         .strings-toggle {
@@ -660,7 +692,7 @@ class LgEssCard extends HTMLElement {
           font-weight: 600;
           cursor: pointer;
           user-select: none;
-          color: var(--secondary-text-color, #9ca3af);
+          color: var(--text-med);
         }
 
         .strings-grid {
@@ -671,28 +703,29 @@ class LgEssCard extends HTMLElement {
         }
 
         .string-card {
-          background: rgba(0, 0, 0, 0.18);
+          background: var(--surface-elevated);
           padding: 8px 10px;
           border-radius: 8px;
-          border-left: 3px solid var(--energy-solar-color);
+          border: 1px solid var(--surface-border);
+          border-left: 3.5px solid var(--solar-color);
         }
 
         .string-name {
           font-size: 0.7rem;
-          color: var(--secondary-text-color, #9ca3af);
+          color: var(--text-med);
           font-weight: 600;
         }
 
         .string-val {
           font-size: 0.88rem;
           font-weight: 700;
-          color: var(--primary-text-color, #fff);
+          color: var(--text-high);
           margin-top: 2px;
         }
 
         .string-volt {
           font-size: 0.68rem;
-          color: var(--secondary-text-color, #6b7280);
+          color: var(--text-med);
         }
 
         /* KPI Stats Grid */
@@ -704,8 +737,8 @@ class LgEssCard extends HTMLElement {
         }
 
         .stat-card {
-          background: var(--secondary-background-color, rgba(255, 255, 255, 0.04));
-          border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.06));
+          background: var(--surface-elevated);
+          border: 1px solid var(--surface-border);
           border-radius: 12px;
           padding: 12px;
           display: flex;
@@ -716,7 +749,7 @@ class LgEssCard extends HTMLElement {
         }
 
         .stat-card:hover {
-          background: rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.1);
         }
 
         .gauge-ring {
@@ -736,7 +769,7 @@ class LgEssCard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.72rem;
+          font-size: 0.75rem;
           font-weight: 800;
         }
 
@@ -748,14 +781,15 @@ class LgEssCard extends HTMLElement {
         .stat-label {
           font-size: 0.72rem;
           font-weight: 600;
-          color: var(--secondary-text-color, #9ca3af);
+          color: var(--text-med);
           text-transform: uppercase;
           letter-spacing: 0.03em;
         }
 
         .stat-desc {
-          font-size: 0.75rem;
-          color: var(--primary-text-color, #fff);
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: var(--text-high);
           margin-top: 2px;
         }
 
@@ -768,21 +802,22 @@ class LgEssCard extends HTMLElement {
         }
 
         .chip {
-          background: rgba(0, 0, 0, 0.18);
+          background: var(--surface-elevated);
+          border: 1px solid var(--surface-border);
           border-radius: 8px;
           padding: 6px 8px;
           text-align: center;
-          border-top: 2.5px solid var(--chip-border, var(--divider-color));
+          border-top: 3px solid var(--chip-border, var(--surface-border));
         }
 
         .chip-lbl {
           font-size: 0.65rem;
-          color: var(--secondary-text-color, #9ca3af);
+          color: var(--text-med);
           font-weight: 600;
         }
 
         .chip-val {
-          font-size: 0.8rem;
+          font-size: 0.82rem;
           font-weight: 700;
           margin-top: 2px;
         }
@@ -796,9 +831,9 @@ class LgEssCard extends HTMLElement {
 
         .btn-ctrl {
           flex: 1;
-          background: var(--secondary-background-color, rgba(255, 255, 255, 0.05));
-          border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.08));
-          color: var(--primary-text-color, #fff);
+          background: var(--surface-elevated);
+          border: 1px solid var(--surface-border);
+          color: var(--text-high);
           border-radius: 10px;
           padding: 9px 12px;
           font-size: 0.78rem;
@@ -813,17 +848,17 @@ class LgEssCard extends HTMLElement {
         }
 
         .btn-ctrl:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.12);
         }
 
         .btn-ctrl.active-blue {
-          background: rgba(56, 189, 248, 0.15);
+          background: rgba(56, 189, 248, 0.18);
           border-color: #38bdf8;
           color: #38bdf8;
         }
 
         .btn-ctrl.active-amber {
-          background: rgba(245, 158, 11, 0.15);
+          background: rgba(245, 158, 11, 0.18);
           border-color: #f59e0b;
           color: #f59e0b;
         }
@@ -855,47 +890,47 @@ class LgEssCard extends HTMLElement {
         <!-- Official Home Assistant Energy Distribution Visualizer (100% Symmetrical) -->
         <div class="flow-container">
           <svg class="flow-svg" viewBox="0 0 100 100">
-            <!-- Inactive Subtle Lines -->
-            <path d="M 28,50 L 72,50" />
-            <path d="M 44,71 C 44,56 34,56 28,56" />
-            <path d="M 56,71 C 56,56 66,56 72,56" />
-            <path d="M 44,29 C 44,44 34,44 28,44" />
-            <path d="M 56,29 C 56,44 66,44 72,44" />
-            <path d="M 50,29 L 50,71" />
+            <!-- Inactive Connecting Lines -->
+            <path class="flow-line" d="M 28,50 L 72,50" />
+            <path class="flow-line" d="M 44,71 C 44,56 34,56 28,56" />
+            <path class="flow-line" d="M 56,71 C 56,56 66,56 72,56" />
+            <path class="flow-line" d="M 44,29 C 44,44 34,44 28,44" />
+            <path class="flow-line" d="M 56,29 C 56,44 66,44 72,44" />
+            <path class="flow-line" d="M 50,29 L 50,71" />
 
             <!-- Active Paths -->
             <!-- Solar to Battery (Vertical) -->
-            <path id="path-solar-batt" class="battery-solar ${hasSolarToBattery ? 'active' : ''}"
-                  d="M 50,29 L 50,71" vector-effect="non-scaling-stroke" />
+            <path id="path-solar-batt" class="flow-line battery-solar ${hasSolarToBattery ? 'active' : ''}"
+                  d="M 50,29 L 50,71" />
 
             <!-- Solar to Grid (Curved) -->
-            <path id="path-solar-grid" class="return ${hasSolarToGrid ? 'active' : ''}"
-                  d="M 44,29 C 44,44 34,44 28,44" vector-effect="non-scaling-stroke" />
+            <path id="path-solar-grid" class="flow-line return ${hasSolarToGrid ? 'active' : ''}"
+                  d="M 44,29 C 44,44 34,44 28,44" />
 
             <!-- Solar to Home (Curved) -->
-            <path id="path-solar-home" class="solar ${hasSolarToHome ? 'active' : ''}"
-                  d="M 56,29 C 56,44 66,44 72,44" vector-effect="non-scaling-stroke" />
+            <path id="path-solar-home" class="flow-line solar ${hasSolarToHome ? 'active' : ''}"
+                  d="M 56,29 C 56,44 66,44 72,44" />
 
             <!-- Battery to Home (Curved) -->
-            <path id="path-batt-home" class="battery-house ${hasBatteryToHome ? 'active' : ''}"
-                  d="M 56,71 C 56,56 66,56 72,56" vector-effect="non-scaling-stroke" />
+            <path id="path-batt-home" class="flow-line battery-house ${hasBatteryToHome ? 'active' : ''}"
+                  d="M 56,71 C 56,56 66,56 72,56" />
 
             <!-- Battery to Grid / Grid to Battery -->
-            <path id="path-batt-grid" class="${hasBatteryToGrid ? 'battery-to-grid active' : hasBatteryFromGrid ? 'battery-from-grid active' : ''}"
-                  d="M 44,71 C 44,56 34,56 28,56" vector-effect="non-scaling-stroke" />
+            <path id="path-batt-grid" class="flow-line ${hasBatteryToGrid ? 'battery-to-grid active' : hasBatteryFromGrid ? 'battery-from-grid active' : ''}"
+                  d="M 44,71 C 44,56 34,56 28,56" />
 
             <!-- Grid to Home (Horizontal) -->
-            <path id="path-grid-home" class="grid ${hasGridToHome ? 'active' : ''}"
-                  d="M 28,50 L 72,50" vector-effect="non-scaling-stroke" />
+            <path id="path-grid-home" class="flow-line grid ${hasGridToHome ? 'active' : ''}"
+                  d="M 28,50 L 72,50" />
 
             <!-- Animated Motion Dots -->
             ${allowAnim && hasSolarToGrid ? `
-              <circle r="1" class="return" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot return">
                 <animateMotion dur="${getDuration(solarToGrid)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
                 </animateMotion>
               </circle>
-              <circle r="1" class="return" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot return">
                 <animateMotion dur="${getDuration(solarToGrid)}s" begin="-${(getDuration(solarToGrid) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
                 </animateMotion>
@@ -903,12 +938,12 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasSolarToHome ? `
-              <circle r="1" class="solar" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot solar">
                 <animateMotion dur="${getDuration(solarToHome)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
                 </animateMotion>
               </circle>
-              <circle r="1" class="solar" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot solar">
                 <animateMotion dur="${getDuration(solarToHome)}s" begin="-${(getDuration(solarToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
                 </animateMotion>
@@ -916,12 +951,12 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasSolarToBattery ? `
-              <circle r="1" class="battery-solar" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot battery-solar">
                 <animateMotion dur="${getDuration(solarToBattery)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
                 </animateMotion>
               </circle>
-              <circle r="1" class="battery-solar" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot battery-solar">
                 <animateMotion dur="${getDuration(solarToBattery)}s" begin="-${(getDuration(solarToBattery) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
                 </animateMotion>
@@ -929,12 +964,12 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasBatteryToHome ? `
-              <circle r="1" class="battery-house" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot battery-house">
                 <animateMotion dur="${getDuration(batteryToHome)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
                 </animateMotion>
               </circle>
-              <circle r="1" class="battery-house" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot battery-house">
                 <animateMotion dur="${getDuration(batteryToHome)}s" begin="-${(getDuration(batteryToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
                 </animateMotion>
@@ -942,7 +977,7 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasBatteryFromGrid ? `
-              <circle r="1" class="battery-from-grid" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot battery-from-grid">
                 <animateMotion dur="${getDuration(gridToBattery)}s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
                   <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
                 </animateMotion>
@@ -950,7 +985,7 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasBatteryToGrid ? `
-              <circle r="1" class="battery-to-grid" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot battery-to-grid">
                 <animateMotion dur="${getDuration(batteryToGrid)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
                 </animateMotion>
@@ -958,12 +993,12 @@ class LgEssCard extends HTMLElement {
             ` : ''}
 
             ${allowAnim && hasGridToHome ? `
-              <circle r="1" class="grid" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot grid">
                 <animateMotion dur="${getDuration(gridToHome)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
                 </animateMotion>
               </circle>
-              <circle r="1" class="grid" vector-effect="non-scaling-stroke">
+              <circle r="1.3" class="flow-dot grid">
                 <animateMotion dur="${getDuration(gridToHome)}s" begin="-${(getDuration(gridToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
                   <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
                 </animateMotion>
@@ -974,8 +1009,8 @@ class LgEssCard extends HTMLElement {
           <!-- 1. Node Solar (Top Center: 50%, 18%) -->
           <div class="node node-solar" id="node-solar">
             <span class="label">Solar</span>
-            <div class="circle" style="color: var(--energy-solar-color);">
-              <svg class="node-icon" viewBox="0 0 24 24">
+            <div class="circle">
+              <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--solar-color);">
                 <path d="M12 2L14.39 5.42C13.65 5.15 12.84 5 12 5C11.16 5 10.35 5.15 9.61 5.42L12 2M12 7A5 5 0 0 1 17 12A5 5 0 0 1 12 17A5 5 0 0 1 7 12A5 5 0 0 1 12 7M12 9A3 3 0 0 0 9 12A3 3 0 0 0 12 15A3 3 0 0 0 15 12A3 3 0 0 0 12 9Z" />
               </svg>
               <span class="val">${this._formatPower(pvPower)}</span>
@@ -985,7 +1020,7 @@ class LgEssCard extends HTMLElement {
           <!-- 2. Node Grid (Left: 17%, 50%) -->
           <div class="node node-grid" id="node-grid">
             <div class="circle ${isGridSelling ? 'selling' : isGridBuying ? 'buying' : ''}">
-              <svg class="node-icon" viewBox="0 0 24 24" style="color: ${isGridSelling ? 'var(--energy-grid-return-color)' : isGridBuying ? 'var(--energy-grid-consumption-color)' : 'inherit'};">
+              <svg class="node-icon" viewBox="0 0 24 24" style="color: ${isGridSelling ? 'var(--grid-sell-color)' : isGridBuying ? 'var(--grid-buy-color)' : 'var(--text-med)'};">
                 <path d="M8.29,6.29L12,2.59L15.71,6.29L14.29,7.71L13,6.41V9.3L15.78,11H18V13H15.93L17.93,18H20V20H17.8L19.8,22H17.15L15.35,20H8.65L6.85,22H4.2L6.2,20H4V18H6.07L8.07,13H6V11H8.22L11,9.3V6.41L9.71,7.71L8.29,6.29M11,11.15L8.85,12.5H15.15L13,11.15V11H11V11.15M8.38,14.5L6.98,18H17.02L15.62,14.5H8.38Z"/>
               </svg>
               ${isGridSelling ? `
@@ -993,33 +1028,42 @@ class LgEssCard extends HTMLElement {
                   <svg class="small-arrow" viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>
                   ${this._formatPower(gridSell)}
                 </span>
-              ` : ''}
-              <span class="consumption">
-                ${isGridBuying ? `
+              ` : isGridBuying ? `
+                <span class="consumption">
                   <svg class="small-arrow" viewBox="0 0 24 24"><path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/></svg>
-                ` : ''}
-                ${this._formatPower(gridBuy)}
-              </span>
+                  ${this._formatPower(gridBuy)}
+                </span>
+              ` : `
+                <span class="grid-idle">${this._formatPower(0)}</span>
+              `}
             </div>
             <span class="label">${isGridSelling ? 'Einspeisung' : 'Netz'}</span>
           </div>
 
           <!-- 3. Node Home (Right: 83%, 50%) -->
           <div class="node node-house" id="node-house">
-            <div class="circle ${hasRing ? '' : 'border'}">
-              <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--primary-text-color);">
+            <div class="circle">
+              <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--text-high);">
                 <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
               </svg>
               <span class="val">${this._formatPower(housePower)}</span>
 
-              ${hasRing ? `
-                <svg class="circle-ring" viewBox="0 0 80 80">
+              <svg class="circle-ring" viewBox="0 0 80 80">
+                ${hasRing ? `
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="37"
+                    fill="none"
+                    stroke="var(--surface-border)"
+                    stroke-width="2.5"
+                  />
                   ${solarArc > 0 ? `
                     <circle
                       class="solar"
                       cx="40"
                       cy="40"
-                      r="38"
+                      r="37"
                       stroke-dasharray="${solarArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
                       stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
                       shape-rendering="geometricPrecision"
@@ -1030,7 +1074,7 @@ class LgEssCard extends HTMLElement {
                       class="battery"
                       cx="40"
                       cy="40"
-                      r="38"
+                      r="37"
                       stroke-dasharray="${battArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - battArc).toFixed(2)}"
                       stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - battArc - (solarArc || 0)).toFixed(2)}"
                       shape-rendering="geometricPrecision"
@@ -1041,14 +1085,14 @@ class LgEssCard extends HTMLElement {
                       class="grid"
                       cx="40"
                       cy="40"
-                      r="38"
+                      r="37"
                       stroke-dasharray="${gridArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - gridArc).toFixed(2)}"
                       stroke-dashoffset="0"
                       shape-rendering="geometricPrecision"
                     />
                   ` : ''}
-                </svg>
-              ` : ''}
+                ` : ''}
+              </svg>
             </div>
             <span class="label">Verbrauch</span>
           </div>
@@ -1056,7 +1100,7 @@ class LgEssCard extends HTMLElement {
           <!-- 4. Node Battery (Bottom Center: 50%, 82%) -->
           <div class="node node-batt" id="node-batt">
             <div class="circle ${isBattCharging ? 'charging' : isBattDischarging ? 'discharging' : ''}">
-              <div class="battery-soc" style="color: ${isBattCharging ? 'var(--energy-battery-in-color)' : isBattDischarging ? 'var(--energy-battery-out-color)' : 'inherit'};">
+              <div class="battery-soc" style="color: ${isBattCharging ? 'var(--batt-in-color)' : isBattDischarging ? 'var(--batt-out-color)' : 'var(--text-high)'};">
                 <svg viewBox="0 0 24 24">
                   ${this._getBatteryIcon(soc, isBattCharging)}
                 </svg>
@@ -1067,16 +1111,14 @@ class LgEssCard extends HTMLElement {
                   <svg class="small-arrow" viewBox="0 0 24 24"><path d="M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z"/></svg>
                   ${this._formatPower(battCharge)}
                 </span>
-              ` : ''}
-              ${isBattDischarging ? `
+              ` : isBattDischarging ? `
                 <span class="battery-out">
                   <svg class="small-arrow" viewBox="0 0 24 24"><path d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z"/></svg>
                   ${this._formatPower(battDischarge)}
                 </span>
-              ` : ''}
-              ${!isBattCharging && !isBattDischarging ? `
-                <span class="battery-idle">0.00 kW</span>
-              ` : ''}
+              ` : `
+                <span class="battery-idle">${this._formatPower(0)}</span>
+              `}
             </div>
             <span class="label">Batterie</span>
           </div>
@@ -1113,60 +1155,60 @@ class LgEssCard extends HTMLElement {
           </div>
         ` : ''}
 
-        <!-- Optional: KPI Tagesstatistiken (Autarkie & Eigenverbrauch) -->
-        ${this._config.show_stats ? `
-          <div class="stats-grid">
-            <!-- Autarkiegrad Ring -->
-            <div class="stat-card" id="stat-autarky">
-              <div class="gauge-ring">
-                <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3.5" />
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--energy-grid-return-color, #10b981)" stroke-width="3.5" stroke-dasharray="${Math.min(100, Math.max(0, autarky))}, 100" stroke-linecap="round" />
-                </svg>
-                <div class="gauge-text" style="color: var(--energy-grid-return-color, #10b981);">${Math.round(autarky)}%</div>
+          <!-- Optional: KPI Tagesstatistiken (Autarkie & Eigenverbrauch) -->
+          ${this._config.show_stats ? `
+            <div class="stats-grid">
+              <!-- Autarkiegrad Ring -->
+              <div class="stat-card" id="stat-autarky">
+                <div class="gauge-ring">
+                  <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="3.5" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="${Math.min(100, Math.max(0, autarky))}, 100" stroke-linecap="round" />
+                  </svg>
+                  <div class="gauge-text" style="color: #10b981;">${Math.round(autarky)}%</div>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Autarkie heute</span>
+                  <span class="stat-desc">${autarky >= 80 ? 'Sehr hoch 🌟' : autarky >= 50 ? 'Gut 🌿' : 'Netzbezug ⚡'}</span>
+                </div>
               </div>
-              <div class="stat-info">
-                <span class="stat-label">Autarkie heute</span>
-                <span class="stat-desc">${autarky >= 80 ? 'Sehr hoch 🌟' : autarky >= 50 ? 'Gut 🌿' : 'Netzbezug ⚡'}</span>
+
+              <!-- Eigenverbrauchsrate Ring -->
+              <div class="stat-card" id="stat-selfcons">
+                <div class="gauge-ring">
+                  <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="3.5" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--batt-out-color)" stroke-width="3.5" stroke-dasharray="${Math.min(100, Math.max(0, selfCons))}, 100" stroke-linecap="round" />
+                  </svg>
+                  <div class="gauge-text" style="color: var(--batt-out-color);">${Math.round(selfCons)}%</div>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Eigenverbrauch</span>
+                  <span class="stat-desc">${selfCons.toFixed(1)}% genutzt</span>
+                </div>
               </div>
             </div>
 
-            <!-- Eigenverbrauchsrate Ring -->
-            <div class="stat-card" id="stat-selfcons">
-              <div class="gauge-ring">
-                <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3.5" />
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--energy-battery-out-color, #4db6ac)" stroke-width="3.5" stroke-dasharray="${Math.min(100, Math.max(0, selfCons))}, 100" stroke-linecap="round" />
-                </svg>
-                <div class="gauge-text" style="color: var(--energy-battery-out-color, #4db6ac);">${Math.round(selfCons)}%</div>
+            <!-- Daily Totals Chips -->
+            <div class="daily-chips">
+              <div class="chip" style="--chip-border: var(--solar-color);">
+                <div class="chip-lbl">Erzeugung</div>
+                <div class="chip-val" style="color: var(--solar-color);">${this._formatEnergy(dailyPv)}</div>
               </div>
-              <div class="stat-info">
-                <span class="stat-label">Eigenverbrauch</span>
-                <span class="stat-desc">${selfCons.toFixed(1)}% genutzt</span>
+              <div class="chip" style="--chip-border: #38bdf8;">
+                <div class="chip-lbl">Verbrauch</div>
+                <div class="chip-val" style="color: #38bdf8;">${this._formatEnergy(dailyHouse)}</div>
+              </div>
+              <div class="chip" style="--chip-border: var(--grid-sell-color);">
+                <div class="chip-lbl">Einspeisung</div>
+                <div class="chip-val" style="color: var(--grid-sell-color);">${this._formatEnergy(dailyGridSell)}</div>
+              </div>
+              <div class="chip" style="--chip-border: var(--grid-buy-color);">
+                <div class="chip-lbl">Netzbezug</div>
+                <div class="chip-val" style="color: var(--grid-buy-color);">${this._formatEnergy(dailyGridBuy)}</div>
               </div>
             </div>
-          </div>
-
-          <!-- Daily Totals Chips -->
-          <div class="daily-chips">
-            <div class="chip" style="--chip-border: var(--energy-solar-color);">
-              <div class="chip-lbl">Erzeugung</div>
-              <div class="chip-val" style="color: var(--energy-solar-color);">${this._formatEnergy(dailyPv)}</div>
-            </div>
-            <div class="chip" style="--chip-border: var(--primary-color, #0284c7);">
-              <div class="chip-lbl">Verbrauch</div>
-              <div class="chip-val" style="color: var(--primary-color, #38bdf8);">${this._formatEnergy(dailyHouse)}</div>
-            </div>
-            <div class="chip" style="--chip-border: var(--energy-grid-return-color);">
-              <div class="chip-lbl">Einspeisung</div>
-              <div class="chip-val" style="color: var(--energy-grid-return-color);">${this._formatEnergy(dailyGridSell)}</div>
-            </div>
-            <div class="chip" style="--chip-border: var(--energy-grid-consumption-color);">
-              <div class="chip-lbl">Netzbezug</div>
-              <div class="chip-val" style="color: var(--energy-grid-consumption-color);">${this._formatEnergy(dailyGridBuy)}</div>
-            </div>
-          </div>
-        ` : ''}
+          ` : ''}
 
         <!-- Optional: Quick Controls Bar -->
         ${this._config.show_controls ? `
