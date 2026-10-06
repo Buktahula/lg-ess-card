@@ -6,6 +6,10 @@ Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und 
 ![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
+<p align="center">
+  <img src="images/preview.svg" alt="LG ESS Solar Card Preview" width="500">
+</p>
+
 ---
 
 ## ✨ Features
