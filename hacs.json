@@ -1,5 +1,6 @@
 {
   "name": "LG ESS Solar Card",
-  "render_readme": true,
-  "filename": "lg-ess-card.js"
+  "content_in_root": true,
+  "filename": "lg-ess-card.js",
+  "render_readme": true
 }
