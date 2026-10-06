@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.1.7";
+const CARD_VERSION = "1.1.8";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
   "color: white; background: #ff9800; font-weight: 700; border-radius: 3px 0 0 3px;",
@@ -50,8 +50,6 @@ const DEFAULT_ENTITY_PAIRS = {
   switch_fastcharge: ["switch.fastcharge", "switch.lgess_switch_fastcharge"],
   switch_active: ["switch.active", "switch.lgess_switch_active"],
 };
-
-const CIRCLE_CIRCUMFERENCE = 230.91; // 2 * PI * 36.75 (matches 76px outer diameter minus border)
 
 class LgEssCard extends HTMLElement {
   constructor() {
@@ -387,11 +385,19 @@ class LgEssCard extends HTMLElement {
         }
 
         /* 3. House Node - 100% Symmetrical 76px Size, Border & Glow */
+        .node-house .circle.house-active,
         .node-house .circle {
           border-color: var(--house-color, #0284c7);
           background-color: var(--node-surface, #22222a);
           background-image: linear-gradient(rgba(2, 132, 199, 0.12), rgba(2, 132, 199, 0.12));
           box-shadow: 0 0 14px rgba(2, 132, 199, 0.4);
+        }
+
+        .node-house .circle.house-idle {
+          border-color: rgba(2, 132, 199, 0.35);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(2, 132, 199, 0.05), rgba(2, 132, 199, 0.05));
+          box-shadow: none;
         }
 
         /* 4. Battery Node */
@@ -414,34 +420,6 @@ class LgEssCard extends HTMLElement {
           background-color: var(--node-surface, #22222a);
           background-image: linear-gradient(rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.10));
           box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
-        }
-
-        /* Home Multi-Arc Ring (sitting seamlessly on top of 76px border) */
-        .circle svg.circle-ring {
-          position: absolute;
-          top: -2.5px;
-          left: -2.5px;
-          width: 76px;
-          height: 76px;
-          pointer-events: none;
-        }
-
-        .circle-ring circle {
-          fill: none;
-          stroke-width: 2.5px;
-          transition: stroke-dashoffset 0.4s ease, stroke-dasharray 0.4s ease;
-        }
-
-        .circle-ring circle.solar {
-          stroke: var(--solar-color);
-        }
-
-        .circle-ring circle.battery {
-          stroke: var(--batt-out-color);
-        }
-
-        .circle-ring circle.grid {
-          stroke: var(--grid-buy-color);
         }
 
         .node-icon {
@@ -949,36 +927,6 @@ class LgEssCard extends HTMLElement {
                 <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
               </svg>
               <span class="val" id="val-house">0.00 kW</span>
-
-              <svg class="circle-ring" viewBox="0 0 76 76">
-                <circle
-                  id="ring-solar"
-                  class="solar"
-                  cx="38"
-                  cy="38"
-                  r="36.75"
-                  shape-rendering="geometricPrecision"
-                  style="display: none;"
-                />
-                <circle
-                  id="ring-batt"
-                  class="battery"
-                  cx="38"
-                  cy="38"
-                  r="36.75"
-                  shape-rendering="geometricPrecision"
-                  style="display: none;"
-                />
-                <circle
-                  id="ring-grid"
-                  class="grid"
-                  cx="38"
-                  cy="38"
-                  r="36.75"
-                  shape-rendering="geometricPrecision"
-                  style="display: none;"
-                />
-              </svg>
             </div>
             <span class="label" id="lbl-house">Verbrauch</span>
           </div>
@@ -1183,17 +1131,6 @@ class LgEssCard extends HTMLElement {
     const hasBatteryFromGrid = gridToBattery > 0.02;
     const hasGridToHome = gridToHome > 0.02;
 
-    // Home Circle Source Mix (Arcs Calculation)
-    const ringTotal = solarToHome + batteryToHome + gridToHome;
-    let solarArc = 0;
-    let battArc = 0;
-    let gridArc = 0;
-    if (ringTotal > 0.02) {
-      solarArc = (solarToHome / ringTotal) * CIRCLE_CIRCUMFERENCE;
-      battArc = (batteryToHome / ringTotal) * CIRCLE_CIRCUMFERENCE;
-      gridArc = (gridToHome / ringTotal) * CIRCLE_CIRCUMFERENCE;
-    }
-
     // Animation Duration Calculation based on flow volume
     const maxPower = Math.max(pvPower, housePower, gridBuy, gridSell, battCharge, battDischarge, 1.0);
     const getDuration = (flowKw) => {
@@ -1277,37 +1214,11 @@ class LgEssCard extends HTMLElement {
     }
 
     // 6. Node House Updates
+    const isHouseActive = housePower > 0.02;
+    const cHouse = this.shadowRoot.getElementById("circle-house");
+    if (cHouse) cHouse.className = `circle ${isHouseActive ? 'house-active' : 'house-idle'}`;
     const valHouse = this.shadowRoot.getElementById("val-house");
     if (valHouse) valHouse.textContent = this._formatPower(housePower);
-
-    const rSolar = this.shadowRoot.getElementById("ring-solar");
-    const rBatt = this.shadowRoot.getElementById("ring-batt");
-    const rGrid = this.shadowRoot.getElementById("ring-grid");
-    if (rSolar && rBatt && rGrid) {
-      if (solarArc > 0) {
-        rSolar.style.display = "";
-        rSolar.setAttribute("stroke-dasharray", `${solarArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}`);
-        rSolar.setAttribute("stroke-dashoffset", `-${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}`);
-      } else {
-        rSolar.style.display = "none";
-      }
-
-      if (battArc > 0) {
-        rBatt.style.display = "";
-        rBatt.setAttribute("stroke-dasharray", `${battArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - battArc).toFixed(2)}`);
-        rBatt.setAttribute("stroke-dashoffset", `-${(CIRCLE_CIRCUMFERENCE - battArc - (solarArc || 0)).toFixed(2)}`);
-      } else {
-        rBatt.style.display = "none";
-      }
-
-      if (gridArc > 0) {
-        rGrid.style.display = "";
-        rGrid.setAttribute("stroke-dasharray", `${gridArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - gridArc).toFixed(2)}`);
-        rGrid.setAttribute("stroke-dashoffset", "0");
-      } else {
-        rGrid.style.display = "none";
-      }
-    }
 
     // 7. Node Battery Updates
     const cBatt = this.shadowRoot.getElementById("circle-batt");
