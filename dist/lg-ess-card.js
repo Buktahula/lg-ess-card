@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.1.5";
+const CARD_VERSION = "1.1.6";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
   "color: white; background: #ff9800; font-weight: 700; border-radius: 3px 0 0 3px;",
@@ -59,7 +59,9 @@ class LgEssCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = {};
     this._hass = null;
+    this._initialized = false;
     this._showStrings = false;
+    this._isGridSelling = false;
   }
 
   setConfig(config) {
@@ -73,21 +75,27 @@ class LgEssCard extends HTMLElement {
       animation: true,
       ...config,
     };
+    this._initialized = false;
+    if (this._hass) {
+      this._firstRender();
+    }
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
+    if (!this._initialized) {
+      this._firstRender();
+    } else {
+      this._update();
+    }
   }
 
   _getEntityState(key) {
     if (!this._hass) return null;
-    // 1. Explicit user override
     if (this._config.entities && this._config.entities[key]) {
       const eid = this._config.entities[key];
       return this._hass.states[eid] || null;
     }
-    // 2. Auto-discovery
     const candidates = DEFAULT_ENTITY_PAIRS[key] || [];
     for (const eid of candidates) {
       if (this._hass.states[eid]) {
@@ -159,113 +167,14 @@ class LgEssCard extends HTMLElement {
     return `<path d="M16 20H8V6H16M16.67 4H15V2H9V4H7.33C6.6 4 6 4.6 6 5.33V20.67C6 21.4 6.6 22 7.33 22H16.67C17.4 22 18 21.4 18 20.67V5.33C18 4.6 17.4 4 16.67 4Z"/>`;
   }
 
-  _render() {
+  _firstRender() {
     if (!this._hass || !this.shadowRoot) return;
-
-    // Live Power Values (in kW)
-    const pvPower = this._getNumericValue("pv_total");
-    const gridBuy = this._getNumericValue("grid_buy");
-    const gridSell = this._getNumericValue("grid_sell");
-    const battCharge = this._getNumericValue("battery_charge");
-    const battDischarge = this._getNumericValue("battery_discharge");
-    const housePower = this._getNumericValue("house_consumption");
-
-    // Battery
-    const soc = Math.round(this._getNumericValue("battery_soc", 0));
-    const opMode = this._getEntityState("operation_mode")?.state || "Normal";
-    const gridFreq = this._getNumericValue("grid_frequency", 50.0);
-
-    // Daily Energy & KPIs
-    const autarky = this._getNumericValue("autarky", 0);
-    const selfCons = this._getNumericValue("self_consumption", 0);
-    const dailyPv = this._getNumericValue("daily_pv", 0);
-    const dailyGridSell = this._getNumericValue("daily_grid_sell", 0);
-    const dailyGridBuy = this._getNumericValue("daily_grid_buy", 0);
-    const dailyHouse = this._getNumericValue("daily_house", 0);
-
-    // Switches
-    const winterModeState = this._getEntityState("switch_winter_mode")?.state === "on";
-    const fastchargeState = this._getEntityState("switch_fastcharge")?.state === "on";
-    const activeState = this._getEntityState("switch_active")?.state !== "off";
-
-    // Flows Breakdown (in kW)
-    const isSolarActive = pvPower > 0.02;
-    const isGridBuying = gridBuy > 0.02;
-    const isGridSelling = gridSell > 0.02;
-    const isBattCharging = battCharge > 0.02;
-    const isBattDischarging = battDischarge > 0.02;
-
-    const solarToGrid = isGridSelling ? gridSell : 0;
-    const solarToBattery = isBattCharging ? Math.min(pvPower, battCharge) : 0;
-    const solarToHome = isSolarActive
-      ? Math.max(0, Math.min(housePower, pvPower - solarToBattery - solarToGrid))
-      : 0;
-
-    const batteryToHome = isBattDischarging ? battDischarge : 0;
-    const batteryToGrid = isBattDischarging && isGridSelling
-      ? Math.max(0, Math.min(battDischarge, gridSell - Math.min(pvPower, gridSell)))
-      : 0;
-    const gridToBattery = isBattCharging ? Math.max(0, battCharge - pvPower) : 0;
-    const gridToHome = isGridBuying ? Math.max(0, gridBuy - gridToBattery) : 0;
-
-    const hasSolarToGrid = solarToGrid > 0.02;
-    const hasSolarToHome = solarToHome > 0.02;
-    const hasSolarToBattery = solarToBattery > 0.02;
-    const hasBatteryToHome = batteryToHome > 0.02;
-    const hasBatteryToGrid = batteryToGrid > 0.02;
-    const hasBatteryFromGrid = gridToBattery > 0.02;
-    const hasGridToHome = gridToHome > 0.02;
-
-    // Home Circle Source Mix (Arcs Calculation)
-    const usedSolar = solarToHome;
-    const usedBattery = batteryToHome;
-    const usedGrid = gridToHome;
-    const ringTotal = usedSolar + usedBattery + usedGrid;
-
-    let solarArc = 0;
-    let battArc = 0;
-    let gridArc = 0;
-    const hasRing = ringTotal > 0.02;
-
-    if (hasRing) {
-      solarArc = (usedSolar / ringTotal) * CIRCLE_CIRCUMFERENCE;
-      battArc = (usedBattery / ringTotal) * CIRCLE_CIRCUMFERENCE;
-      gridArc = (usedGrid / ringTotal) * CIRCLE_CIRCUMFERENCE;
-    }
-
-    // Animation Duration Calculation based on flow volume
-    const maxPower = Math.max(pvPower, housePower, gridBuy, gridSell, battCharge, battDischarge, 1.0);
-    const getDuration = (flowKw) => {
-      const norm = Math.min(1.0, Math.max(0.0, flowKw / (maxPower * 0.9)));
-      return (6.0 - norm * 4.6).toFixed(2);
-    };
-
-    const allowAnim = this._config.animation !== false;
-
-    // PV Strings data
-    const pv1P = this._getNumericValue("pv1");
-    const pv1V = this._getNumericValue("pv1_voltage");
-    const pv2P = this._getNumericValue("pv2");
-    const pv2V = this._getNumericValue("pv2_voltage");
-    const pv3P = this._getNumericValue("pv3");
-    const pv3V = this._getNumericValue("pv3_voltage");
-    const hasPv3 = pv3P > 0 || pv3V > 0 || this._getEntityState("pv3") !== null;
-
-    // Theme & Dark Mode Adaptive Tokens
-    const isDark = this._hass?.themes?.darkMode ?? true;
-    const defaultNodeBg = isDark ? "#22222a" : "#ffffff";
-    const defaultSurfaceElevated = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
-    const defaultSurfaceBorder = isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(0, 0, 0, 0.12)";
-    const defaultFlowInactive = isDark ? "rgba(200, 205, 225, 0.28)" : "rgba(160, 165, 180, 0.35)";
-    const defaultTextHigh = isDark ? "#f8fafc" : "#111827";
-    const defaultTextMed = isDark ? "#94a3b8" : "#64748b";
-    const defaultTextMuted = isDark ? "#64748b" : "#9ca3af";
 
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
-          /* Official Home Assistant Energy Dashboard Colors & Fallbacks (Zero Cycles) */
+          /* Official Home Assistant Energy Dashboard Colors & Fallbacks */
           --solar-color: var(--energy-solar-color, #ff9800);
           --batt-in-color: var(--energy-battery-in-color, #f06292);
           --batt-out-color: var(--energy-battery-out-color, #4db6ac);
@@ -275,13 +184,13 @@ class LgEssCard extends HTMLElement {
 
           /* UI Contrast & Theme Variables */
           --card-radius: var(--ha-card-border-radius, 16px);
-          --node-surface: var(--card-background-color, ${defaultNodeBg});
-          --surface-elevated: var(--secondary-background-color, ${defaultSurfaceElevated});
-          --surface-border: var(--divider-color, ${defaultSurfaceBorder});
-          --flow-inactive: var(--energy-line-inactive-color, ${defaultFlowInactive});
-          --text-high: var(--primary-text-color, ${defaultTextHigh});
-          --text-med: var(--secondary-text-color, ${defaultTextMed});
-          --text-muted: var(--disabled-text-color, ${defaultTextMuted});
+          --node-surface: var(--card-background-color, #22222a);
+          --surface-elevated: var(--secondary-background-color, rgba(255, 255, 255, 0.06));
+          --surface-border: var(--divider-color, rgba(255, 255, 255, 0.14));
+          --flow-inactive: var(--energy-line-inactive-color, rgba(200, 205, 225, 0.28));
+          --text-high: var(--primary-text-color, #f8fafc);
+          --text-med: var(--secondary-text-color, #94a3b8);
+          --text-muted: var(--disabled-text-color, #64748b);
         }
 
         ha-card {
@@ -346,13 +255,12 @@ class LgEssCard extends HTMLElement {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: ${activeState ? "#10b981" : "#ef4444"};
-          box-shadow: 0 0 8px ${activeState ? "#10b981" : "#ef4444"};
+          background: #10b981;
+          box-shadow: 0 0 8px #10b981;
+          transition: background 0.3s ease, box-shadow 0.3s ease;
         }
 
-        /* ============================================================== */
-        /* Energy Flow Container (100% Symmetrical Absolute Coordinates)  */
-        /* ============================================================== */
+        /* Energy Flow Container (100% Symmetrical Coordinates) */
         .flow-container {
           position: relative;
           width: 100%;
@@ -371,7 +279,7 @@ class LgEssCard extends HTMLElement {
           z-index: 1;
         }
 
-        /* Node Elements (Centered via Translate) */
+        /* Node Elements */
         .node {
           position: absolute;
           transform: translate(-50%, -50%);
@@ -388,7 +296,6 @@ class LgEssCard extends HTMLElement {
           transform: translate(-50%, -50%) scale(1.05);
         }
 
-        /* Perfectly Symmetrical Percentage Placements */
         .node-solar {
           top: 18%;
           left: 50%;
@@ -409,6 +316,7 @@ class LgEssCard extends HTMLElement {
           left: 83%;
         }
 
+        /* 100% Solid Opaque Node Circles with Glow */
         .circle {
           width: 76px;
           height: 76px;
@@ -421,7 +329,7 @@ class LgEssCard extends HTMLElement {
           justify-content: center;
           text-align: center;
           position: relative;
-          background: var(--node-surface);
+          background-color: var(--node-surface, #22222a);
           box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
           transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
         }
@@ -429,56 +337,65 @@ class LgEssCard extends HTMLElement {
         /* 1. Solar Node */
         .node-solar .circle.solar-active {
           border-color: var(--solar-color);
-          background: rgba(255, 152, 0, 0.12);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(255, 152, 0, 0.12), rgba(255, 152, 0, 0.12));
           box-shadow: 0 0 14px rgba(255, 152, 0, 0.4);
         }
 
         .node-solar .circle.solar-idle {
           border-color: rgba(255, 152, 0, 0.35);
-          background: rgba(255, 152, 0, 0.05);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(255, 152, 0, 0.05), rgba(255, 152, 0, 0.05));
         }
 
         /* 2. Grid Node */
         .node-grid .circle.selling {
           border-color: var(--grid-sell-color);
-          background: rgba(131, 83, 209, 0.12);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(131, 83, 209, 0.12), rgba(131, 83, 209, 0.12));
           box-shadow: 0 0 14px rgba(131, 83, 209, 0.4);
         }
 
         .node-grid .circle.buying {
           border-color: var(--grid-buy-color);
-          background: rgba(72, 143, 194, 0.12);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(72, 143, 194, 0.12), rgba(72, 143, 194, 0.12));
           box-shadow: 0 0 14px rgba(72, 143, 194, 0.4);
         }
 
         .node-grid .circle.grid-idle {
           border-color: rgba(72, 143, 194, 0.35);
-          background: rgba(72, 143, 194, 0.05);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(72, 143, 194, 0.05), rgba(72, 143, 194, 0.05));
         }
 
         /* 3. House Node - 100% Symmetrical 76px Size, Border & Glow */
         .node-house .circle {
           border-color: var(--house-color, #0284c7);
-          background: rgba(2, 132, 199, 0.12);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(2, 132, 199, 0.12), rgba(2, 132, 199, 0.12));
           box-shadow: 0 0 14px rgba(2, 132, 199, 0.4);
         }
 
         /* 4. Battery Node */
         .node-batt .circle.charging {
           border-color: var(--batt-in-color);
-          background: rgba(240, 98, 146, 0.12);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(240, 98, 146, 0.12), rgba(240, 98, 146, 0.12));
           box-shadow: 0 0 14px rgba(240, 98, 146, 0.4);
         }
 
         .node-batt .circle.discharging {
           border-color: var(--batt-out-color);
-          background: rgba(77, 182, 172, 0.12);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(77, 182, 172, 0.12), rgba(77, 182, 172, 0.12));
           box-shadow: 0 0 14px rgba(77, 182, 172, 0.4);
         }
 
         .node-batt .circle.batt-idle {
           border-color: #10b981;
-          background: rgba(16, 185, 129, 0.10);
+          background-color: var(--node-surface, #22222a);
+          background-image: linear-gradient(rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.10));
           box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
         }
 
@@ -544,7 +461,7 @@ class LgEssCard extends HTMLElement {
         }
 
         .node-grid .label {
-          color: ${isGridSelling ? "var(--grid-sell-color)" : isGridBuying ? "var(--grid-buy-color)" : "var(--text-med)"};
+          color: var(--text-med);
         }
 
         .node-house .label {
@@ -552,7 +469,7 @@ class LgEssCard extends HTMLElement {
         }
 
         .node-batt .label {
-          color: ${isBattCharging ? "var(--batt-in-color)" : isBattDischarging ? "var(--batt-out-color)" : "#10b981"};
+          color: #10b981;
         }
 
         .battery-soc {
@@ -621,7 +538,7 @@ class LgEssCard extends HTMLElement {
           margin-right: 2px;
         }
 
-        /* SVG Paths (Energy Flow Lines) */
+        /* SVG Flow Lines (Tucked right at circle borders, zero gap, zero inside) */
         path.flow-line {
           fill: none;
           stroke: var(--flow-inactive);
@@ -663,7 +580,7 @@ class LgEssCard extends HTMLElement {
           stroke: var(--grid-buy-color);
         }
 
-        /* Moving Particle Dots (Smooth 60 FPS hardware accelerated, perfectly sized) */
+        /* Moving Particle Dots */
         circle.flow-dot {
           vector-effect: non-scaling-stroke;
           stroke: none;
@@ -804,23 +721,20 @@ class LgEssCard extends HTMLElement {
           font-size: 0.72rem;
           font-weight: 600;
           color: var(--text-med);
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
         }
 
         .stat-desc {
-          font-size: 0.78rem;
-          font-weight: 600;
+          font-size: 0.85rem;
+          font-weight: 700;
           color: var(--text-high);
           margin-top: 2px;
         }
 
-        /* Daily Totals Chips */
         .daily-chips {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 8px;
-          margin-top: 12px;
+          margin-top: 10px;
         }
 
         .chip {
@@ -829,7 +743,7 @@ class LgEssCard extends HTMLElement {
           border-radius: 8px;
           padding: 6px 8px;
           text-align: center;
-          border-top: 3px solid var(--chip-border, var(--surface-border));
+          border-top: 2.5px solid var(--chip-border, var(--surface-border));
         }
 
         .chip-lbl {
@@ -839,12 +753,12 @@ class LgEssCard extends HTMLElement {
         }
 
         .chip-val {
-          font-size: 0.82rem;
+          font-size: 0.78rem;
           font-weight: 700;
           margin-top: 2px;
         }
 
-        /* Quick Controls Bar */
+        /* Controls Bar */
         .controls-bar {
           display: flex;
           gap: 10px;
@@ -853,20 +767,20 @@ class LgEssCard extends HTMLElement {
 
         .btn-ctrl {
           flex: 1;
-          background: var(--surface-elevated);
-          border: 1px solid var(--surface-border);
-          color: var(--text-high);
-          border-radius: 10px;
-          padding: 9px 12px;
-          font-size: 0.78rem;
-          font-weight: 600;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
+          padding: 10px 14px;
+          border-radius: 10px;
+          background: var(--surface-elevated);
+          border: 1px solid var(--surface-border);
+          color: var(--text-high);
+          font-size: 0.82rem;
+          font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s ease;
           user-select: none;
+          transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
         .btn-ctrl:hover {
@@ -904,339 +818,569 @@ class LgEssCard extends HTMLElement {
             <h2 class="card-title">${this._config.title}</h2>
           </div>
           <div class="status-pill">
-            <span class="status-dot"></span>
-            <span>${opMode} • ${gridFreq.toFixed(1)} Hz</span>
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-opmode">Normal • 50.0 Hz</span>
           </div>
         </div>
 
         <!-- Official Home Assistant Energy Distribution Visualizer (100% Symmetrical) -->
         <div class="flow-container">
           <svg class="flow-svg" viewBox="0 0 465 300">
-            <!-- Inactive Connecting Lines (Seamless center-to-center connections behind nodes) -->
-            <path class="flow-line" d="M 79,150 L 386,150" />
-            <path class="flow-line" d="M 214,234 C 214,186 148,168 98,168" />
-            <path class="flow-line" d="M 251,234 C 251,186 317,168 367,168" />
-            <path class="flow-line" d="M 214,66 C 214,114 148,132 98,132" />
-            <path class="flow-line" d="M 251,66 C 251,114 317,132 367,132" />
-            <path class="flow-line" d="M 232.5,54 L 232.5,246" />
+            <!-- Inactive Connecting Lines (Terminating right at circle borders) -->
+            <path class="flow-line" d="M 115,150 L 350,150" />
+            <path class="flow-line" d="M 220,211 C 220,174 150,160 116,160" />
+            <path class="flow-line" d="M 245,211 C 245,174 315,160 349,160" />
+            <path class="flow-line" d="M 220,89 C 220,126 150,140 116,140" />
+            <path class="flow-line" d="M 245,89 C 245,126 315,140 349,140" />
+            <path class="flow-line" d="M 232.5,90 L 232.5,210" />
 
             <!-- Active Flow Paths -->
-            <!-- Solar to Battery (Vertical) -->
-            <path id="path-solar-batt" class="flow-line battery-solar ${hasSolarToBattery ? 'active' : ''}"
-                  d="M 232.5,54 L 232.5,246" />
+            <!-- Solar to Battery (Vertical: down) -->
+            <path id="path-solar-batt" class="flow-line battery-solar"
+                  d="M 232.5,90 L 232.5,210" />
 
-            <!-- Solar to Grid (Curved) -->
-            <path id="path-solar-grid" class="flow-line return ${hasSolarToGrid ? 'active' : ''}"
-                  d="M 214,66 C 214,114 148,132 98,132" />
+            <!-- Solar to Grid (Curved: Solar to Grid) -->
+            <path id="path-solar-grid" class="flow-line return"
+                  d="M 220,89 C 220,126 150,140 116,140" />
 
-            <!-- Solar to Home (Curved) -->
-            <path id="path-solar-home" class="flow-line solar ${hasSolarToHome ? 'active' : ''}"
-                  d="M 251,66 C 251,114 317,132 367,132" />
+            <!-- Solar to Home (Curved: Solar to Home) -->
+            <path id="path-solar-home" class="flow-line solar"
+                  d="M 245,89 C 245,126 315,140 349,140" />
 
-            <!-- Battery to Home (Curved) -->
-            <path id="path-batt-home" class="flow-line battery-house ${hasBatteryToHome ? 'active' : ''}"
-                  d="M 251,234 C 251,186 317,168 367,168" />
+            <!-- Battery to Home (Curved: Battery to Home) -->
+            <path id="path-batt-home" class="flow-line battery-house"
+                  d="M 245,211 C 245,174 315,160 349,160" />
 
             <!-- Battery to Grid / Grid to Battery -->
-            <path id="path-batt-grid" class="flow-line ${hasBatteryToGrid ? 'battery-to-grid active' : hasBatteryFromGrid ? 'battery-from-grid active' : ''}"
-                  d="M 214,234 C 214,186 148,168 98,168" />
+            <path id="path-batt-grid" class="flow-line battery-to-grid"
+                  d="M 220,211 C 220,174 150,160 116,160" />
 
             <!-- Grid to Home (Horizontal) -->
-            <path id="path-grid-home" class="flow-line grid ${hasGridToHome ? 'active' : ''}"
-                  d="M 79,150 L 386,150" />
+            <path id="path-grid-home" class="flow-line grid"
+                  d="M 115,150 L 350,150" />
 
-            <!-- Animated Motion Dots (Silky smooth, exactly 1 dot per active line, perfectly round circle r=4.5) -->
-            ${allowAnim && hasSolarToGrid ? `
-              <circle r="4.5" class="flow-dot return">
-                <animateMotion dur="${getDuration(solarToGrid)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
-                </animateMotion>
-              </circle>
-            ` : ''}
+            <!-- Animated Motion Dots (SMIL Persistent in DOM - Never resets on state update!) -->
+            <circle id="dot-solar-grid" r="4.5" class="flow-dot return" style="display: none;">
+              <animateMotion id="anim-solar-grid" dur="3s" repeatCount="indefinite" calcMode="linear">
+                <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
+              </animateMotion>
+            </circle>
 
-            ${allowAnim && hasSolarToHome ? `
-              <circle r="4.5" class="flow-dot solar">
-                <animateMotion dur="${getDuration(solarToHome)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
-                </animateMotion>
-              </circle>
-            ` : ''}
+            <circle id="dot-solar-home" r="4.5" class="flow-dot solar" style="display: none;">
+              <animateMotion id="anim-solar-home" dur="3s" repeatCount="indefinite" calcMode="linear">
+                <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
+              </animateMotion>
+            </circle>
 
-            ${allowAnim && hasSolarToBattery ? `
-              <circle r="4.5" class="flow-dot battery-solar">
-                <animateMotion dur="${getDuration(solarToBattery)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
-                </animateMotion>
-              </circle>
-            ` : ''}
+            <circle id="dot-solar-batt" r="4.5" class="flow-dot battery-solar" style="display: none;">
+              <animateMotion id="anim-solar-batt" dur="3s" repeatCount="indefinite" calcMode="linear">
+                <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
+              </animateMotion>
+            </circle>
 
-            ${allowAnim && hasBatteryToHome ? `
-              <circle r="4.5" class="flow-dot battery-house">
-                <animateMotion dur="${getDuration(batteryToHome)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
-                </animateMotion>
-              </circle>
-            ` : ''}
+            <circle id="dot-batt-home" r="4.5" class="flow-dot battery-house" style="display: none;">
+              <animateMotion id="anim-batt-home" dur="3s" repeatCount="indefinite" calcMode="linear">
+                <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
+              </animateMotion>
+            </circle>
 
-            ${allowAnim && hasBatteryFromGrid ? `
-              <circle r="4.5" class="flow-dot battery-from-grid">
-                <animateMotion dur="${getDuration(gridToBattery)}s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
-                  <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
-                </animateMotion>
-              </circle>
-            ` : ''}
+            <circle id="dot-batt-grid-in" r="4.5" class="flow-dot battery-from-grid" style="display: none;">
+              <animateMotion id="anim-batt-grid-in" dur="3s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
+                <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
+              </animateMotion>
+            </circle>
 
-            ${allowAnim && hasBatteryToGrid ? `
-              <circle r="4.5" class="flow-dot battery-to-grid">
-                <animateMotion dur="${getDuration(batteryToGrid)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
-                </animateMotion>
-              </circle>
-            ` : ''}
+            <circle id="dot-batt-grid-out" r="4.5" class="flow-dot battery-to-grid" style="display: none;">
+              <animateMotion id="anim-batt-grid-out" dur="3s" repeatCount="indefinite" calcMode="linear">
+                <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
+              </animateMotion>
+            </circle>
 
-            ${allowAnim && hasGridToHome ? `
-              <circle r="4.5" class="flow-dot grid">
-                <animateMotion dur="${getDuration(gridToHome)}s" repeatCount="indefinite" calcMode="linear">
-                  <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
-                </animateMotion>
-              </circle>
-            ` : ''}
+            <circle id="dot-grid-home" r="4.5" class="flow-dot grid" style="display: none;">
+              <animateMotion id="anim-grid-home" dur="3s" repeatCount="indefinite" calcMode="linear">
+                <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
+              </animateMotion>
+            </circle>
           </svg>
 
           <!-- 1. Node Solar (Top Center: 50%, 18%) -->
           <div class="node node-solar" id="node-solar">
-            <span class="label">Solar</span>
-            <div class="circle ${isSolarActive ? 'solar-active' : 'solar-idle'}">
+            <span class="label" id="lbl-solar">Solar</span>
+            <div class="circle" id="circle-solar">
               <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--solar-color);">
                 <path d="M12 2L14.39 5.42C13.65 5.15 12.84 5 12 5C11.16 5 10.35 5.15 9.61 5.42L12 2M12 7A5 5 0 0 1 17 12A5 5 0 0 1 12 17A5 5 0 0 1 7 12A5 5 0 0 1 12 7M12 9A3 3 0 0 0 9 12A3 3 0 0 0 12 15A3 3 0 0 0 15 12A3 3 0 0 0 12 9Z" />
               </svg>
-              <span class="val">${this._formatPower(pvPower)}</span>
+              <span class="val" id="val-solar">0.00 kW</span>
             </div>
           </div>
 
           <!-- 2. Node Grid (Left: 17%, 50%) -->
           <div class="node node-grid" id="node-grid">
-            <div class="circle ${isGridSelling ? 'selling' : isGridBuying ? 'buying' : 'grid-idle'}">
-              <svg class="node-icon" viewBox="0 0 24 24" style="color: ${isGridSelling ? 'var(--grid-sell-color)' : isGridBuying ? 'var(--grid-buy-color)' : 'var(--text-med)'};">
+            <div class="circle" id="circle-grid">
+              <svg class="node-icon" id="icon-grid" viewBox="0 0 24 24" style="color: var(--text-med);">
                 <path d="M8.29,6.29L12,2.59L15.71,6.29L14.29,7.71L13,6.41V9.3L15.78,11H18V13H15.93L17.93,18H20V20H17.8L19.8,22H17.15L15.35,20H8.65L6.85,22H4.2L6.2,20H4V18H6.07L8.07,13H6V11H8.22L11,9.3V6.41L9.71,7.71L8.29,6.29M11,11.15L8.85,12.5H15.15L13,11.15V11H11V11.15M8.38,14.5L6.98,18H17.02L15.62,14.5H8.38Z"/>
               </svg>
-              ${isGridSelling ? `
-                <span class="return">
-                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>
-                  ${this._formatPower(gridSell)}
-                </span>
-              ` : isGridBuying ? `
-                <span class="consumption">
-                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/></svg>
-                  ${this._formatPower(gridBuy)}
-                </span>
-              ` : `
-                <span class="grid-idle">${this._formatPower(0)}</span>
-              `}
+              <span id="val-grid"><span class="grid-idle">0.00 kW</span></span>
             </div>
-            <span class="label">${isGridSelling ? 'Einspeisung' : 'Netz'}</span>
+            <span class="label" id="lbl-grid">Netz</span>
           </div>
 
           <!-- 3. Node Home (Right: 83%, 50%) -->
           <div class="node node-house" id="node-house">
-            <div class="circle">
+            <div class="circle" id="circle-house">
               <svg class="node-icon" viewBox="0 0 24 24" style="color: #38bdf8;">
                 <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
               </svg>
-              <span class="val">${this._formatPower(housePower)}</span>
+              <span class="val" id="val-house">0.00 kW</span>
 
               <svg class="circle-ring" viewBox="0 0 76 76">
-                ${hasRing ? `
-                  ${solarArc > 0 ? `
-                    <circle
-                      class="solar"
-                      cx="38"
-                      cy="38"
-                      r="36.75"
-                      stroke-dasharray="${solarArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
-                      stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
-                      shape-rendering="geometricPrecision"
-                    />
-                  ` : ''}
-                  ${battArc > 0 ? `
-                    <circle
-                      class="battery"
-                      cx="38"
-                      cy="38"
-                      r="36.75"
-                      stroke-dasharray="${battArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - battArc).toFixed(2)}"
-                      stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - battArc - (solarArc || 0)).toFixed(2)}"
-                      shape-rendering="geometricPrecision"
-                    />
-                  ` : ''}
-                  ${gridArc > 0 ? `
-                    <circle
-                      class="grid"
-                      cx="38"
-                      cy="38"
-                      r="36.75"
-                      stroke-dasharray="${gridArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - gridArc).toFixed(2)}"
-                      stroke-dashoffset="0"
-                      shape-rendering="geometricPrecision"
-                    />
-                  ` : ''}
-                ` : ''}
+                <circle
+                  id="ring-solar"
+                  class="solar"
+                  cx="38"
+                  cy="38"
+                  r="36.75"
+                  shape-rendering="geometricPrecision"
+                  style="display: none;"
+                />
+                <circle
+                  id="ring-batt"
+                  class="battery"
+                  cx="38"
+                  cy="38"
+                  r="36.75"
+                  shape-rendering="geometricPrecision"
+                  style="display: none;"
+                />
+                <circle
+                  id="ring-grid"
+                  class="grid"
+                  cx="38"
+                  cy="38"
+                  r="36.75"
+                  shape-rendering="geometricPrecision"
+                  style="display: none;"
+                />
               </svg>
             </div>
-            <span class="label">Verbrauch</span>
+            <span class="label" id="lbl-house">Verbrauch</span>
           </div>
 
           <!-- 4. Node Battery (Bottom Center: 50%, 82%) -->
           <div class="node node-batt" id="node-batt">
-            <div class="circle ${isBattCharging ? 'charging' : isBattDischarging ? 'discharging' : 'batt-idle'}">
-              <div class="battery-soc" style="color: ${isBattCharging ? 'var(--batt-in-color)' : isBattDischarging ? 'var(--batt-out-color)' : '#10b981'};">
-                <svg viewBox="0 0 24 24">
-                  ${this._getBatteryIcon(soc, isBattCharging)}
+            <div class="circle" id="circle-batt">
+              <div class="battery-soc" id="soc-group-batt" style="color: #10b981;">
+                <svg id="soc-icon-batt" viewBox="0 0 24 24">
+                  <path d="M16 20H8V6H16M16.67 4H15V2H9V4H7.33C6.6 4 6 4.6 6 5.33V20.67C6 21.4 6.6 22 7.33 22H16.67C17.4 22 18 21.4 18 20.67V5.33C18 4.6 17.4 4 16.67 4Z"/>
                 </svg>
-                <span>${soc}%</span>
+                <span id="soc-batt">0%</span>
               </div>
-              ${isBattCharging ? `
-                <span class="battery-in">
-                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z"/></svg>
-                  ${this._formatPower(battCharge)}
-                </span>
-              ` : isBattDischarging ? `
-                <span class="battery-out">
-                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z"/></svg>
-                  ${this._formatPower(battDischarge)}
-                </span>
-              ` : `
-                <span class="battery-idle" style="color: #10b981;">${this._formatPower(0)}</span>
-              `}
+              <span id="val-batt"><span class="battery-idle" style="color: #10b981;">0.00 kW</span></span>
             </div>
-            <span class="label">Batterie</span>
+            <span class="label" id="lbl-batt">Batterie</span>
           </div>
         </div>
 
         <!-- Optional: PV Strings Drawer -->
         ${this._config.show_strings ? `
-          <div class="strings-drawer">
+          <div class="strings-drawer" id="strings-drawer">
             <div class="strings-toggle" id="strings-toggle">
-              <span>☀️ PV Strings (${hasPv3 ? '3' : '2'} Stränge)</span>
-              <span>${this._showStrings ? '▲ Schließen' : '▼ Details'}</span>
+              <span>☀️ PV Strings (<span id="strings-count">2</span> Stränge)</span>
+              <span id="strings-arrow">${this._showStrings ? '▲ Schließen' : '▼ Details'}</span>
             </div>
-            ${this._showStrings ? `
-              <div class="strings-grid">
-                <div class="string-card">
-                  <div class="string-name">String 1</div>
-                  <div class="string-val">${this._formatPower(pv1P)}</div>
-                  <div class="string-volt">${pv1V > 0 ? pv1V.toFixed(1) + ' V' : ''}</div>
-                </div>
-                <div class="string-card">
-                  <div class="string-name">String 2</div>
-                  <div class="string-val">${this._formatPower(pv2P)}</div>
-                  <div class="string-volt">${pv2V > 0 ? pv2V.toFixed(1) + ' V' : ''}</div>
-                </div>
-                ${hasPv3 ? `
-                  <div class="string-card">
-                    <div class="string-name">String 3</div>
-                    <div class="string-val">${this._formatPower(pv3P)}</div>
-                    <div class="string-volt">${pv3V > 0 ? pv3V.toFixed(1) + ' V' : ''}</div>
-                  </div>
-                ` : ''}
+            <div class="strings-grid" id="strings-grid" style="display: ${this._showStrings ? 'grid' : 'none'};">
+              <div class="string-card">
+                <div class="string-name">String 1</div>
+                <div class="string-val" id="str1-p">0.00 kW</div>
+                <div class="string-volt" id="str1-v"></div>
               </div>
-            ` : ''}
+              <div class="string-card">
+                <div class="string-name">String 2</div>
+                <div class="string-val" id="str2-p">0.00 kW</div>
+                <div class="string-volt" id="str2-v"></div>
+              </div>
+              <div class="string-card" id="str3-card" style="display: none;">
+                <div class="string-name">String 3</div>
+                <div class="string-val" id="str3-p">0.00 kW</div>
+                <div class="string-volt" id="str3-v"></div>
+              </div>
+            </div>
           </div>
         ` : ''}
 
-          <!-- Optional: KPI Tagesstatistiken (Autarkie & Eigenverbrauch) -->
-          ${this._config.show_stats ? `
-            <div class="stats-grid">
-              <!-- Autarkiegrad Ring -->
-              <div class="stat-card" id="stat-autarky">
-                <div class="gauge-ring">
-                  <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="3.5" />
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="${Math.min(100, Math.max(0, autarky))}, 100" stroke-linecap="round" />
-                  </svg>
-                  <div class="gauge-text" style="color: #10b981;">${Math.round(autarky)}%</div>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-label">Autarkie heute</span>
-                  <span class="stat-desc">${autarky >= 80 ? 'Sehr hoch 🌟' : autarky >= 50 ? 'Gut 🌿' : 'Netzbezug ⚡'}</span>
-                </div>
+        <!-- Optional: KPI Tagesstatistiken -->
+        ${this._config.show_stats ? `
+          <div class="stats-grid">
+            <div class="stat-card" id="stat-autarky">
+              <div class="gauge-ring">
+                <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="3.5" />
+                  <path id="autarky-path" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="0, 100" stroke-linecap="round" />
+                </svg>
+                <div class="gauge-text" id="autarky-text" style="color: #10b981;">0%</div>
               </div>
-
-              <!-- Eigenverbrauchsrate Ring -->
-              <div class="stat-card" id="stat-selfcons">
-                <div class="gauge-ring">
-                  <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="3.5" />
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--batt-out-color)" stroke-width="3.5" stroke-dasharray="${Math.min(100, Math.max(0, selfCons))}, 100" stroke-linecap="round" />
-                  </svg>
-                  <div class="gauge-text" style="color: var(--batt-out-color);">${Math.round(selfCons)}%</div>
-                </div>
-                <div class="stat-info">
-                  <span class="stat-label">Eigenverbrauch</span>
-                  <span class="stat-desc">${selfCons.toFixed(1)}% genutzt</span>
-                </div>
+              <div class="stat-info">
+                <span class="stat-label">Autarkie heute</span>
+                <span class="stat-desc" id="autarky-desc">Netzbezug ⚡</span>
               </div>
             </div>
 
-            <!-- Daily Totals Chips -->
-            <div class="daily-chips">
-              <div class="chip" style="--chip-border: var(--solar-color);">
-                <div class="chip-lbl">Erzeugung</div>
-                <div class="chip-val" style="color: var(--solar-color);">${this._formatEnergy(dailyPv)}</div>
+            <div class="stat-card" id="stat-selfcons">
+              <div class="gauge-ring">
+                <svg class="gauge-svg" width="48" height="48" viewBox="0 0 36 36">
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="3.5" />
+                  <path id="selfcons-path" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--batt-out-color)" stroke-width="3.5" stroke-dasharray="0, 100" stroke-linecap="round" />
+                </svg>
+                <div class="gauge-text" id="selfcons-text" style="color: var(--batt-out-color);">0%</div>
               </div>
-              <div class="chip" style="--chip-border: #38bdf8;">
-                <div class="chip-lbl">Verbrauch</div>
-                <div class="chip-val" style="color: #38bdf8;">${this._formatEnergy(dailyHouse)}</div>
-              </div>
-              <div class="chip" style="--chip-border: var(--grid-sell-color);">
-                <div class="chip-lbl">Einspeisung</div>
-                <div class="chip-val" style="color: var(--grid-sell-color);">${this._formatEnergy(dailyGridSell)}</div>
-              </div>
-              <div class="chip" style="--chip-border: var(--grid-buy-color);">
-                <div class="chip-lbl">Netzbezug</div>
-                <div class="chip-val" style="color: var(--grid-buy-color);">${this._formatEnergy(dailyGridBuy)}</div>
+              <div class="stat-info">
+                <span class="stat-label">Eigenverbrauch</span>
+                <span class="stat-desc" id="selfcons-desc">0.0% genutzt</span>
               </div>
             </div>
-          ` : ''}
+          </div>
+
+          <div class="daily-chips">
+            <div class="chip" style="--chip-border: var(--solar-color);">
+              <div class="chip-lbl">Erzeugung</div>
+              <div class="chip-val" id="chip-pv" style="color: var(--solar-color);">0.0 kWh</div>
+            </div>
+            <div class="chip" style="--chip-border: #38bdf8;">
+              <div class="chip-lbl">Verbrauch</div>
+              <div class="chip-val" id="chip-house" style="color: #38bdf8;">0.0 kWh</div>
+            </div>
+            <div class="chip" style="--chip-border: var(--grid-sell-color);">
+              <div class="chip-lbl">Einspeisung</div>
+              <div class="chip-val" id="chip-sell" style="color: var(--grid-sell-color);">0.0 kWh</div>
+            </div>
+            <div class="chip" style="--chip-border: var(--grid-buy-color);">
+              <div class="chip-lbl">Netzbezug</div>
+              <div class="chip-val" id="chip-buy" style="color: var(--grid-buy-color);">0.0 kWh</div>
+            </div>
+          </div>
+        ` : ''}
 
         <!-- Optional: Quick Controls Bar -->
         ${this._config.show_controls ? `
           <div class="controls-bar">
-            <!-- Wintermodus -->
-            <div class="btn-ctrl ${winterModeState ? 'active-blue' : ''}" id="btn-winter">
+            <div class="btn-ctrl" id="btn-winter">
               <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2V6L10 4L8.5 5.5L12 9L15.5 5.5L14 4L12 6V2M12 15L8.5 18.5L10 20L12 18V22H12L12 18L14 20L15.5 18.5L12 15M2 12H6L4 10L5.5 8.5L9 12L5.5 15.5L4 14L6 12H2M15 12L18.5 8.5L20 10L18 12H22V12H18L20 14L18.5 15.5L15 12Z"/>
               </svg>
-              <span>Wintermodus ${winterModeState ? 'AN' : 'AUS'}</span>
+              <span id="btn-winter-text">Wintermodus AUS</span>
             </div>
 
-            <!-- Schnellladung -->
-            <div class="btn-ctrl ${fastchargeState ? 'active-amber' : ''}" id="btn-fastcharge">
+            <div class="btn-ctrl" id="btn-fastcharge">
               <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M11 15H6L13 1V9H18L11 23V15Z"/>
               </svg>
-              <span>Schnellladung ${fastchargeState ? 'AN' : 'AUS'}</span>
+              <span id="btn-fastcharge-text">Schnellladung AUS</span>
             </div>
           </div>
         ` : ''}
       </ha-card>
     `;
 
-    // Attach Event Listeners
+    // Attach Event Listeners ONCE
     this.shadowRoot.getElementById("node-solar")?.addEventListener("click", () => this._fireMoreInfo("pv_total"));
     this.shadowRoot.getElementById("node-batt")?.addEventListener("click", () => this._fireMoreInfo("battery_soc"));
-    this.shadowRoot.getElementById("node-grid")?.addEventListener("click", () => this._fireMoreInfo(isGridSelling ? "grid_sell" : "grid_buy"));
+    this.shadowRoot.getElementById("node-grid")?.addEventListener("click", () => this._fireMoreInfo(this._isGridSelling ? "grid_sell" : "grid_buy"));
     this.shadowRoot.getElementById("node-house")?.addEventListener("click", () => this._fireMoreInfo("house_consumption"));
     this.shadowRoot.getElementById("stat-autarky")?.addEventListener("click", () => this._fireMoreInfo("autarky"));
     this.shadowRoot.getElementById("stat-selfcons")?.addEventListener("click", () => this._fireMoreInfo("self_consumption"));
 
     this.shadowRoot.getElementById("strings-toggle")?.addEventListener("click", () => {
       this._showStrings = !this._showStrings;
-      this._render();
+      const grid = this.shadowRoot.getElementById("strings-grid");
+      const arrow = this.shadowRoot.getElementById("strings-arrow");
+      if (grid) grid.style.display = this._showStrings ? "grid" : "none";
+      if (arrow) arrow.textContent = this._showStrings ? "▲ Schließen" : "▼ Details";
     });
 
     this.shadowRoot.getElementById("btn-winter")?.addEventListener("click", () => this._toggleSwitch("switch_winter_mode"));
     this.shadowRoot.getElementById("btn-fastcharge")?.addEventListener("click", () => this._toggleSwitch("switch_fastcharge"));
+
+    this._initialized = true;
+    this._update();
+  }
+
+  _update() {
+    if (!this._hass || !this.shadowRoot || !this._initialized) return;
+
+    // Live Power Values (in kW)
+    const pvPower = this._getNumericValue("pv_total");
+    const gridBuy = this._getNumericValue("grid_buy");
+    const gridSell = this._getNumericValue("grid_sell");
+    const battCharge = this._getNumericValue("battery_charge");
+    const battDischarge = this._getNumericValue("battery_discharge");
+    const housePower = this._getNumericValue("house_consumption");
+
+    // Battery & Status
+    const soc = Math.round(this._getNumericValue("battery_soc", 0));
+    const opMode = this._getEntityState("operation_mode")?.state || "Normal";
+    const gridFreq = this._getNumericValue("grid_frequency", 50.0);
+
+    // Daily KPIs
+    const autarky = this._getNumericValue("autarky", 0);
+    const selfCons = this._getNumericValue("self_consumption", 0);
+    const dailyPv = this._getNumericValue("daily_pv", 0);
+    const dailyGridSell = this._getNumericValue("daily_grid_sell", 0);
+    const dailyGridBuy = this._getNumericValue("daily_grid_buy", 0);
+    const dailyHouse = this._getNumericValue("daily_house", 0);
+
+    // Switches
+    const winterModeState = this._getEntityState("switch_winter_mode")?.state === "on";
+    const fastchargeState = this._getEntityState("switch_fastcharge")?.state === "on";
+    const activeState = this._getEntityState("switch_active")?.state !== "off";
+
+    // Flows Breakdown (in kW)
+    const isSolarActive = pvPower > 0.02;
+    const isGridBuying = gridBuy > 0.02;
+    const isGridSelling = gridSell > 0.02;
+    this._isGridSelling = isGridSelling;
+    const isBattCharging = battCharge > 0.02;
+    const isBattDischarging = battDischarge > 0.02;
+
+    const solarToGrid = isGridSelling ? gridSell : 0;
+    const solarToBattery = isBattCharging ? Math.min(pvPower, battCharge) : 0;
+    const solarToHome = isSolarActive
+      ? Math.max(0, Math.min(housePower, pvPower - solarToBattery - solarToGrid))
+      : 0;
+
+    const batteryToHome = isBattDischarging ? battDischarge : 0;
+    const batteryToGrid = isBattDischarging && isGridSelling
+      ? Math.max(0, Math.min(battDischarge, gridSell - Math.min(pvPower, gridSell)))
+      : 0;
+    const gridToBattery = isBattCharging ? Math.max(0, battCharge - pvPower) : 0;
+    const gridToHome = isGridBuying ? Math.max(0, gridBuy - gridToBattery) : 0;
+
+    const hasSolarToGrid = solarToGrid > 0.02;
+    const hasSolarToHome = solarToHome > 0.02;
+    const hasSolarToBattery = solarToBattery > 0.02;
+    const hasBatteryToHome = batteryToHome > 0.02;
+    const hasBatteryToGrid = batteryToGrid > 0.02;
+    const hasBatteryFromGrid = gridToBattery > 0.02;
+    const hasGridToHome = gridToHome > 0.02;
+
+    // Home Circle Source Mix (Arcs Calculation)
+    const ringTotal = solarToHome + batteryToHome + gridToHome;
+    let solarArc = 0;
+    let battArc = 0;
+    let gridArc = 0;
+    if (ringTotal > 0.02) {
+      solarArc = (solarToHome / ringTotal) * CIRCLE_CIRCUMFERENCE;
+      battArc = (batteryToHome / ringTotal) * CIRCLE_CIRCUMFERENCE;
+      gridArc = (gridToHome / ringTotal) * CIRCLE_CIRCUMFERENCE;
+    }
+
+    // Animation Duration Calculation based on flow volume
+    const maxPower = Math.max(pvPower, housePower, gridBuy, gridSell, battCharge, battDischarge, 1.0);
+    const getDuration = (flowKw) => {
+      const norm = Math.min(1.0, Math.max(0.0, flowKw / (maxPower * 0.9)));
+      return (6.0 - norm * 4.6).toFixed(2);
+    };
+
+    const allowAnim = this._config.animation !== false;
+
+    // 1. Header Updates
+    const dotEl = this.shadowRoot.getElementById("status-dot");
+    if (dotEl) {
+      dotEl.style.background = activeState ? "#10b981" : "#ef4444";
+      dotEl.style.boxShadow = `0 0 8px ${activeState ? "#10b981" : "#ef4444"}`;
+    }
+    const opModeEl = this.shadowRoot.getElementById("status-opmode");
+    if (opModeEl) opModeEl.textContent = `${opMode} • ${gridFreq.toFixed(1)} Hz`;
+
+    // 2. SVG Flow Lines Active Classes
+    const setPathActive = (id, activeClass, isActive) => {
+      const el = this.shadowRoot.getElementById(id);
+      if (el) {
+        el.setAttribute("class", `flow-line ${activeClass} ${isActive ? 'active' : ''}`);
+      }
+    };
+    setPathActive("path-solar-batt", "battery-solar", hasSolarToBattery);
+    setPathActive("path-solar-grid", "return", hasSolarToGrid);
+    setPathActive("path-solar-home", "solar", hasSolarToHome);
+    setPathActive("path-batt-home", "battery-house", hasBatteryToHome);
+    setPathActive("path-batt-grid", hasBatteryToGrid ? "battery-to-grid" : "battery-from-grid", hasBatteryToGrid || hasBatteryFromGrid);
+    setPathActive("path-grid-home", "grid", hasGridToHome);
+
+    // 3. Persistent SVG Motion Dots (Only update dur & visibility, NEVER restart DOM animation)
+    const updateDot = (dotId, animId, isActive, flowKw) => {
+      const dot = this.shadowRoot.getElementById(dotId);
+      const anim = this.shadowRoot.getElementById(animId);
+      if (!dot || !anim) return;
+      if (allowAnim && isActive) {
+        dot.style.display = "";
+        const durStr = `${getDuration(flowKw)}s`;
+        if (anim.getAttribute("dur") !== durStr) {
+          anim.setAttribute("dur", durStr);
+        }
+      } else {
+        dot.style.display = "none";
+      }
+    };
+    updateDot("dot-solar-grid", "anim-solar-grid", hasSolarToGrid, solarToGrid);
+    updateDot("dot-solar-home", "anim-solar-home", hasSolarToHome, solarToHome);
+    updateDot("dot-solar-batt", "anim-solar-batt", hasSolarToBattery, solarToBattery);
+    updateDot("dot-batt-home", "anim-batt-home", hasBatteryToHome, batteryToHome);
+    updateDot("dot-batt-grid-in", "anim-batt-grid-in", hasBatteryFromGrid, gridToBattery);
+    updateDot("dot-batt-grid-out", "anim-batt-grid-out", hasBatteryToGrid, batteryToGrid);
+    updateDot("dot-grid-home", "anim-grid-home", hasGridToHome, gridToHome);
+
+    // 4. Node Solar Updates
+    const cSolar = this.shadowRoot.getElementById("circle-solar");
+    if (cSolar) cSolar.className = `circle ${isSolarActive ? 'solar-active' : 'solar-idle'}`;
+    const valSolar = this.shadowRoot.getElementById("val-solar");
+    if (valSolar) valSolar.textContent = this._formatPower(pvPower);
+
+    // 5. Node Grid Updates
+    const cGrid = this.shadowRoot.getElementById("circle-grid");
+    if (cGrid) cGrid.className = `circle ${isGridSelling ? 'selling' : isGridBuying ? 'buying' : 'grid-idle'}`;
+    const iconGrid = this.shadowRoot.getElementById("icon-grid");
+    if (iconGrid) iconGrid.style.color = isGridSelling ? 'var(--grid-sell-color)' : isGridBuying ? 'var(--grid-buy-color)' : 'var(--text-med)';
+    const lblGrid = this.shadowRoot.getElementById("lbl-grid");
+    if (lblGrid) {
+      lblGrid.textContent = isGridSelling ? 'Einspeisung' : 'Netz';
+      lblGrid.style.color = isGridSelling ? 'var(--grid-sell-color)' : isGridBuying ? 'var(--grid-buy-color)' : 'var(--text-med)';
+    }
+    const valGrid = this.shadowRoot.getElementById("val-grid");
+    if (valGrid) {
+      if (isGridSelling) {
+        valGrid.innerHTML = `<span class="return"><svg class="small-arrow" viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>${this._formatPower(gridSell)}</span>`;
+      } else if (isGridBuying) {
+        valGrid.innerHTML = `<span class="consumption"><svg class="small-arrow" viewBox="0 0 24 24"><path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/></svg>${this._formatPower(gridBuy)}</span>`;
+      } else {
+        valGrid.innerHTML = `<span class="grid-idle">${this._formatPower(0)}</span>`;
+      }
+    }
+
+    // 6. Node House Updates
+    const valHouse = this.shadowRoot.getElementById("val-house");
+    if (valHouse) valHouse.textContent = this._formatPower(housePower);
+
+    const rSolar = this.shadowRoot.getElementById("ring-solar");
+    const rBatt = this.shadowRoot.getElementById("ring-batt");
+    const rGrid = this.shadowRoot.getElementById("ring-grid");
+    if (rSolar && rBatt && rGrid) {
+      if (solarArc > 0) {
+        rSolar.style.display = "";
+        rSolar.setAttribute("stroke-dasharray", `${solarArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}`);
+        rSolar.setAttribute("stroke-dashoffset", `-${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}`);
+      } else {
+        rSolar.style.display = "none";
+      }
+
+      if (battArc > 0) {
+        rBatt.style.display = "";
+        rBatt.setAttribute("stroke-dasharray", `${battArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - battArc).toFixed(2)}`);
+        rBatt.setAttribute("stroke-dashoffset", `-${(CIRCLE_CIRCUMFERENCE - battArc - (solarArc || 0)).toFixed(2)}`);
+      } else {
+        rBatt.style.display = "none";
+      }
+
+      if (gridArc > 0) {
+        rGrid.style.display = "";
+        rGrid.setAttribute("stroke-dasharray", `${gridArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - gridArc).toFixed(2)}`);
+        rGrid.setAttribute("stroke-dashoffset", "0");
+      } else {
+        rGrid.style.display = "none";
+      }
+    }
+
+    // 7. Node Battery Updates
+    const cBatt = this.shadowRoot.getElementById("circle-batt");
+    if (cBatt) cBatt.className = `circle ${isBattCharging ? 'charging' : isBattDischarging ? 'discharging' : 'batt-idle'}`;
+    const socGroup = this.shadowRoot.getElementById("soc-group-batt");
+    if (socGroup) socGroup.style.color = isBattCharging ? 'var(--batt-in-color)' : isBattDischarging ? 'var(--batt-out-color)' : '#10b981';
+    const socIcon = this.shadowRoot.getElementById("soc-icon-batt");
+    if (socIcon) socIcon.innerHTML = this._getBatteryIcon(soc, isBattCharging);
+    const socText = this.shadowRoot.getElementById("soc-batt");
+    if (socText) socText.textContent = `${soc}%`;
+    const lblBatt = this.shadowRoot.getElementById("lbl-batt");
+    if (lblBatt) lblBatt.style.color = isBattCharging ? 'var(--batt-in-color)' : isBattDischarging ? 'var(--batt-out-color)' : '#10b981';
+    const valBatt = this.shadowRoot.getElementById("val-batt");
+    if (valBatt) {
+      if (isBattCharging) {
+        valBatt.innerHTML = `<span class="battery-in"><svg class="small-arrow" viewBox="0 0 24 24"><path d="M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z"/></svg>${this._formatPower(battCharge)}</span>`;
+      } else if (isBattDischarging) {
+        valBatt.innerHTML = `<span class="battery-out"><svg class="small-arrow" viewBox="0 0 24 24"><path d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z"/></svg>${this._formatPower(battDischarge)}</span>`;
+      } else {
+        valBatt.innerHTML = `<span class="battery-idle" style="color: #10b981;">${this._formatPower(0)}</span>`;
+      }
+    }
+
+    // 8. PV Strings Updates
+    if (this._config.show_strings) {
+      const pv1P = this._getNumericValue("pv1");
+      const pv1V = this._getNumericValue("pv1_voltage");
+      const pv2P = this._getNumericValue("pv2");
+      const pv2V = this._getNumericValue("pv2_voltage");
+      const pv3P = this._getNumericValue("pv3");
+      const pv3V = this._getNumericValue("pv3_voltage");
+      const hasPv3 = pv3P > 0 || pv3V > 0 || this._getEntityState("pv3") !== null;
+
+      const strCount = this.shadowRoot.getElementById("strings-count");
+      if (strCount) strCount.textContent = hasPv3 ? "3" : "2";
+
+      const str1P = this.shadowRoot.getElementById("str1-p");
+      if (str1P) str1P.textContent = this._formatPower(pv1P);
+      const str1V = this.shadowRoot.getElementById("str1-v");
+      if (str1V) str1V.textContent = pv1V > 0 ? `${pv1V.toFixed(1)} V` : "";
+
+      const str2P = this.shadowRoot.getElementById("str2-p");
+      if (str2P) str2P.textContent = this._formatPower(pv2P);
+      const str2V = this.shadowRoot.getElementById("str2-v");
+      if (str2V) str2V.textContent = pv2V > 0 ? `${pv2V.toFixed(1)} V` : "";
+
+      const str3Card = this.shadowRoot.getElementById("str3-card");
+      if (str3Card) {
+        str3Card.style.display = hasPv3 ? "" : "none";
+        const str3P = this.shadowRoot.getElementById("str3-p");
+        if (str3P) str3P.textContent = this._formatPower(pv3P);
+        const str3V = this.shadowRoot.getElementById("str3-v");
+        if (str3V) str3V.textContent = pv3V > 0 ? `${pv3V.toFixed(1)} V` : "";
+      }
+    }
+
+    // 9. KPI Stats Updates
+    if (this._config.show_stats) {
+      const autarkyPath = this.shadowRoot.getElementById("autarky-path");
+      if (autarkyPath) autarkyPath.setAttribute("stroke-dasharray", `${Math.min(100, Math.max(0, autarky))}, 100`);
+      const autarkyText = this.shadowRoot.getElementById("autarky-text");
+      if (autarkyText) autarkyText.textContent = `${Math.round(autarky)}%`;
+      const autarkyDesc = this.shadowRoot.getElementById("autarky-desc");
+      if (autarkyDesc) autarkyDesc.textContent = autarky >= 80 ? 'Sehr hoch 🌟' : autarky >= 50 ? 'Gut 🌿' : 'Netzbezug ⚡';
+
+      const selfconsPath = this.shadowRoot.getElementById("selfcons-path");
+      if (selfconsPath) selfconsPath.setAttribute("stroke-dasharray", `${Math.min(100, Math.max(0, selfCons))}, 100`);
+      const selfconsText = this.shadowRoot.getElementById("selfcons-text");
+      if (selfconsText) selfconsText.textContent = `${Math.round(selfCons)}%`;
+      const selfconsDesc = this.shadowRoot.getElementById("selfcons-desc");
+      if (selfconsDesc) selfconsDesc.textContent = `${selfCons.toFixed(1)}% genutzt`;
+
+      const chipPv = this.shadowRoot.getElementById("chip-pv");
+      if (chipPv) chipPv.textContent = this._formatEnergy(dailyPv);
+      const chipHouse = this.shadowRoot.getElementById("chip-house");
+      if (chipHouse) chipHouse.textContent = this._formatEnergy(dailyHouse);
+      const chipSell = this.shadowRoot.getElementById("chip-sell");
+      if (chipSell) chipSell.textContent = this._formatEnergy(dailyGridSell);
+      const chipBuy = this.shadowRoot.getElementById("chip-buy");
+      if (chipBuy) chipBuy.textContent = this._formatEnergy(dailyGridBuy);
+    }
+
+    // 10. Controls Updates
+    if (this._config.show_controls) {
+      const btnWinter = this.shadowRoot.getElementById("btn-winter");
+      if (btnWinter) btnWinter.className = `btn-ctrl ${winterModeState ? 'active-blue' : ''}`;
+      const btnWinterText = this.shadowRoot.getElementById("btn-winter-text");
+      if (btnWinterText) btnWinterText.textContent = `Wintermodus ${winterModeState ? 'AN' : 'AUS'}`;
+
+      const btnFast = this.shadowRoot.getElementById("btn-fastcharge");
+      if (btnFast) btnFast.className = `btn-ctrl ${fastchargeState ? 'active-amber' : ''}`;
+      const btnFastText = this.shadowRoot.getElementById("btn-fastcharge-text");
+      if (btnFastText) btnFastText.textContent = `Schnellladung ${fastchargeState ? 'AN' : 'AUS'}`;
+    }
   }
 
   getCardSize() {
