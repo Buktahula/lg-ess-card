@@ -2,7 +2,7 @@
 
 Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und Schnellsteuerung für **LG ESS Solar-Wechselrichter & Batteriespeicher** in Home Assistant Lovelace.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -14,15 +14,17 @@ Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und 
 
 ## ✨ Features
 
-* **⚡ Animierter Live-Energiefluss:**
-  * Fließende Linien mit dynamischen Richtungspartikeln zwischen **Solar ☀️**, **Batterie 🔋**, **Stromnetz ⚡** und **Hausverbrauch 🏠**.
-  * Animation passt ihre Richtung automatisch an (Laden / Entladen, Einspeisung / Netzbezug).
+* **⚡ Energiefluss wie im offiziellen Home Assistant Energy Dashboard:**
+  * **Original 4-Knoten-Layout:** Solar ☀️ (oben), Netz ⚡ (links), Haus 🏠 (rechts) und Batterie 🔋 (unten).
+  * **Exakte geschwungene SVG-Kurven & Verbindungslinien** identisch zum HA-Standard.
+  * **Fließende Partikel (Animated Motion Dots):** Energiefluss-Punkte gleiten entlang der Pfade; die Flussgeschwindigkeit skaliert dynamisch mit der Leistung (schneller bei hoher Leistung).
+  * **Mehrfarbiger Energie-Mix-Ring um das Haus:** Visuelle Aufteilung des aktuellen Verbrauchs nach Solarenergie, Batteriespeicher und Stromnetz.
 * **🔋 Batterie-Visualisierung:**
-  * Live-Füllstandsanzeige (0–100 %) mit dynamischer Farbcodierung (Grün / Gelb / Rot / Cyan beim Laden).
-  * Anzeige von Lade-/Entladeleistung in Echtzeit.
+  * Dynamisches Batterie-Icon mit Lade-Symbol und Füllstand (0–100 %).
+  * Anzeige von Lade- und Entladeleistung mit Pfeil-Indikatoren in Echtzeit.
 * **☀️ PV-Strings Detailschublade:**
   * Aufklappbare Übersicht für **String 1, String 2 und String 3** mit Einzelleistungen (kW/W) und String-Spannungen (V).
-* **📊 Tagesstatistiken & KPIs:**
+* **📊 Tagesstatistiken & KPIs (Theme-integriert):**
   * Kreisförmige Ring-Anzeige für **Autarkiegrad (%)** und **Eigenverbrauchsrate (%)**.
   * Tagesübersicht: Erzeugte Solarenergie, Hausverbrauch, Netzeinspeisung und Netzbezug.
 * **❄️ Schnellsteuerung integriert:**
@@ -30,7 +32,8 @@ Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und 
 * **🪄 Zero-Config Auto-Erkennung:**
   * Erkennt automatisch alle Sensoren des [LG ESS Add-ons](https://github.com/Buktahula/hassio-addons/tree/main/LG_ESS) – egal ob `entity_naming: legacy` (z. B. `sensor.actual_grid_buy`) oder `modern` (z. B. `sensor.aktueller_netzbezug`) eingestellt ist!
 * **🎨 100 % Home Assistant Theme-kompatibel:**
-  * Verwendet native HA-CSS-Variablen für perfekte Darstellung im Dark- und Light-Mode.
+  * Verwendet native HA-CSS-Variablen (`--energy-solar-color`, `--energy-battery-in-color`, `--energy-battery-out-color`, `--energy-grid-consumption-color`, `--energy-grid-return-color`).
+  * Passt sich jedem installierten Home Assistant Theme (Dark & Light) nahtlos an.
 * **📱 Responsiv & Interaktiv:**
   * Klick auf einen Knoten öffnet das Standard Home Assistant `more-info` Dialogfenster.
   * Inklusive grafischem Lovelace-Editor im Dashboard.

@@ -8,29 +8,29 @@
 
     <!-- Header Icon Gradient -->
     <linearGradient id="solar-icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="0%" stop-color="#ff9800"/>
       <stop offset="100%" stop-color="#d97706"/>
     </linearGradient>
 
     <!-- Node Glow Gradients -->
     <radialGradient id="solar-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#eab308" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#eab308" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#ff9800" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#ff9800" stop-opacity="0"/>
     </radialGradient>
 
     <radialGradient id="batt-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#f06292" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#f06292" stop-opacity="0"/>
     </radialGradient>
 
     <radialGradient id="grid-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#488fc2" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#488fc2" stop-opacity="0"/>
     </radialGradient>
 
     <radialGradient id="house-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0"/>
     </radialGradient>
 
     <!-- Drop Shadows -->
@@ -70,102 +70,153 @@
   </g>
 
   <!-- ========================================== -->
-  <!-- ENERGY FLOW VISUALIZER -->
+  <!-- ENERGY FLOW VISUALIZER (HA DASHBOARD STYLE) -->
   <!-- ========================================== -->
-  <g transform="translate(35, 85)">
-    <!-- Flow Area Background -->
-    <rect x="0" y="0" width="470" height="250" fill="none"/>
-
+  <g transform="translate(35, 78)">
     <!-- Glow Backdrops behind Bubbles -->
-    <circle cx="235" cy="50" r="45" fill="url(#solar-glow)"/>
-    <circle cx="85" cy="125" r="45" fill="url(#batt-glow)"/>
-    <circle cx="385" cy="125" r="45" fill="url(#grid-glow)"/>
-    <circle cx="235" cy="200" r="45" fill="url(#house-glow)"/>
+    <circle cx="270" cy="46" r="44" fill="url(#solar-glow)"/>
+    <circle cx="70" cy="136" r="44" fill="url(#grid-glow)"/>
+    <circle cx="400" cy="136" r="44" fill="url(#house-glow)"/>
+    <circle cx="270" cy="226" r="44" fill="url(#batt-glow)"/>
 
-    <!-- Central Hub -->
-    <circle cx="235" cy="125" r="18" fill="#22222b" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.5" stroke-dasharray="3 3"/>
-    <circle cx="235" cy="125" r="7" fill="#38bdf8"/>
+    <!-- ============================================== -->
+    <!-- SVG CONNECTING PATHS (EXACT HA ENERGY GEOMETRY) -->
+    <!-- ============================================== -->
+    <!-- 1. Inactive paths subtle background -->
+    <path d="M 255,46 C 255,115 150,115 106,126" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="1.5"/>
+    <path d="M 255,226 C 255,157 150,157 106,146" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="1.5"/>
+    <path d="M 106,136 L 364,136" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="1.5"/>
+    <path d="M 285,226 C 285,157 320,157 364,146" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="1.5"/>
 
-    <!-- Flow Lines with Animation / Particles -->
-    <!-- Solar to Center -->
-    <line x1="235" y1="84" x2="235" y2="125" stroke="#eab308" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>
-    <polygon points="235,116 231,108 239,108" fill="#eab308"/>
+    <!-- 2. Active Flow Paths -->
+    <!-- Solar to Grid (Return) -->
+    <path id="path-solar-grid" d="M 255,46 C 255,115 150,115 106,126" fill="none" stroke="#488fc2" stroke-width="2"/>
 
-    <!-- Center to Battery (Charging) -->
-    <line x1="235" y1="125" x2="119" y2="125" stroke="#06b6d4" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>
-    <polygon points="126,125 134,121 134,129" fill="#06b6d4"/>
+    <!-- Solar to Home -->
+    <path id="path-solar-home" d="M 285,46 C 285,115 320,115 364,126" fill="none" stroke="#ff9800" stroke-width="2"/>
 
-    <!-- Center to Grid (Selling / Einspeisung) -->
-    <line x1="235" y1="125" x2="351" y2="125" stroke="#10b981" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>
-    <polygon points="344,125 336,121 336,129" fill="#10b981"/>
+    <!-- Solar to Battery (Vertical) -->
+    <path id="path-solar-batt" d="M 270,46 L 270,226" fill="none" stroke="#f06292" stroke-width="2"/>
 
-    <!-- Center to House (Consuming) -->
-    <line x1="235" y1="125" x2="235" y2="166" stroke="#8b5cf6" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>
-    <polygon points="235,158 231,150 239,150" fill="#8b5cf6"/>
+    <!-- Moving Particles (SVG SMIL Animated Dots) -->
+    <!-- Dots: Solar to Grid -->
+    <circle r="3.5" fill="#488fc2">
+      <animateMotion dur="2.4s" repeatCount="indefinite" calcMode="linear">
+        <mpath href="#path-solar-grid"/>
+      </animateMotion>
+    </circle>
+    <circle r="3.5" fill="#488fc2">
+      <animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite" calcMode="linear">
+        <mpath href="#path-solar-grid"/>
+      </animateMotion>
+    </circle>
 
-    <!-- 1. SOLAR BUBBLE (TOP) -->
-    <g transform="translate(235, 50)">
-      <circle cx="0" cy="0" r="33" fill="#262633" stroke="#eab308" stroke-width="2.5" filter="url(#bubble-shadow)"/>
-      <path d="M 0,-14 L 2.5,-8 L 8.5,-8 L 3.5,-4 L 5.5,2 L 0,-1.5 L -5.5,2 L -3.5,-4 L -8.5,-8 L -2.5,-8 Z" fill="#eab308" transform="scale(0.8) translate(0, -6)"/>
-      <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#ffffff" text-anchor="middle">4.85 kW</text>
-      <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.5">SOLAR</text>
+    <!-- Dots: Solar to Home -->
+    <circle r="3.5" fill="#ff9800">
+      <animateMotion dur="2.8s" repeatCount="indefinite" calcMode="linear">
+        <mpath href="#path-solar-home"/>
+      </animateMotion>
+    </circle>
+    <circle r="3.5" fill="#ff9800">
+      <animateMotion dur="2.8s" begin="-1.4s" repeatCount="indefinite" calcMode="linear">
+        <mpath href="#path-solar-home"/>
+      </animateMotion>
+    </circle>
+
+    <!-- Dots: Solar to Battery -->
+    <circle r="3.5" fill="#f06292">
+      <animateMotion dur="2.6s" repeatCount="indefinite" calcMode="linear">
+        <mpath href="#path-solar-batt"/>
+      </animateMotion>
+    </circle>
+    <circle r="3.5" fill="#f06292">
+      <animateMotion dur="2.6s" begin="-1.3s" repeatCount="indefinite" calcMode="linear">
+        <mpath href="#path-solar-batt"/>
+      </animateMotion>
+    </circle>
+
+    <!-- ============================================== -->
+    <!-- 1. SOLAR NODE (TOP CENTER)                     -->
+    <!-- ============================================== -->
+    <g transform="translate(270, 46)">
+      <circle cx="0" cy="0" r="36" fill="#1e1e24" stroke="#ff9800" stroke-width="2.5" filter="url(#bubble-shadow)"/>
+      <!-- Solar Sun Icon -->
+      <path d="M 0,-14 A 5,5 0 0,1 5,-9 A 5,5 0 0,1 0,-4 A 5,5 0 0,1 -5,-9 A 5,5 0 0,1 0,-14 M 0,-21 L 1.8,-17.5 C 1.2,-17.8 0.6,-17.9 0,-17.9 C -0.6,-17.9 -1.2,-17.8 -1.8,-17.5 L 0,-21 M -8,-17 L -5,-15.5 M 8,-17 L 5,-15.5" stroke="#ff9800" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <text x="0" y="8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">4.85 kW</text>
+      <text x="0" y="-45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">SOLAR</text>
     </g>
 
-    <!-- 2. BATTERY BUBBLE (LEFT) -->
-    <g transform="translate(85, 125)">
-      <circle cx="0" cy="0" r="33" fill="#262633" stroke="#06b6d4" stroke-width="2.5" filter="url(#bubble-shadow)"/>
-      <!-- Battery Icon -->
-      <rect x="-7" y="-14" width="14" height="7" rx="1.5" fill="none" stroke="#06b6d4" stroke-width="1.2"/>
-      <rect x="-2" y="-16" width="4" height="2" fill="#06b6d4"/>
-      <text x="0" y="4" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#06b6d4" text-anchor="middle">+1.45 kW</text>
-      
-      <!-- SoC Pill Badge -->
-      <rect x="-17" y="19" width="34" height="15" rx="7.5" fill="#10b981"/>
-      <text x="0" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="900" fill="#000000" text-anchor="middle">82%</text>
-
-      <text x="0" y="46" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.5">BATTERIE</text>
+    <!-- ============================================== -->
+    <!-- 2. GRID NODE (MIDDLE LEFT)                     -->
+    <!-- ============================================== -->
+    <g transform="translate(70, 136)">
+      <circle cx="0" cy="0" r="36" fill="#1e1e24" stroke="#488fc2" stroke-width="2.5" filter="url(#bubble-shadow)"/>
+      <!-- Transmission Tower Icon -->
+      <path d="M -7,-12 L 0,-16 L 7,-12 M -5,-7 L 5,-7 M -3,-1 L 3,-1 M 0,-16 L -5,3 M 0,-16 L 5,3" stroke="#488fc2" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <!-- Value with left arrow (return/sell) -->
+      <g transform="translate(-16, 8)">
+        <path d="M 2,-3 L -2,0 L 2,3 M -2,0 L 5,0" stroke="#488fc2" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      </g>
+      <text x="5" y="10" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#488fc2" text-anchor="middle">2.10 kW</text>
+      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">EINSPEISUNG</text>
     </g>
 
-    <!-- 3. GRID BUBBLE (RIGHT) -->
-    <g transform="translate(385, 125)">
-      <circle cx="0" cy="0" r="33" fill="#262633" stroke="#10b981" stroke-width="2.5" filter="url(#bubble-shadow)"/>
-      <!-- Tower Icon -->
-      <path d="M -5,-12 L 0,-15 L 5,-12 L 3,-7 L 0,-9 L -3,-7 Z" fill="#10b981"/>
-      <text x="0" y="5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#10b981" text-anchor="middle">-2.10 kW</text>
-      <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.5">EINSPEISUNG</text>
-    </g>
-
-    <!-- 4. HOUSE BUBBLE (BOTTOM) -->
-    <g transform="translate(235, 200)">
-      <circle cx="0" cy="0" r="33" fill="#262633" stroke="#8b5cf6" stroke-width="2.5" filter="url(#bubble-shadow)"/>
+    <!-- ============================================== -->
+    <!-- 3. HOME NODE (MIDDLE RIGHT)                    -->
+    <!-- ============================================== -->
+    <g transform="translate(400, 136)">
+      <!-- Circle Background -->
+      <circle cx="0" cy="0" r="36" fill="#1e1e24" filter="url(#bubble-shadow)"/>
+      <!-- Multi-arc Ring (100% solar from pv) -->
+      <circle cx="0" cy="0" r="36" fill="none" stroke="#ff9800" stroke-width="3"/>
       <!-- House Icon -->
-      <path d="M 0,-15 L -8,-7 L -5,-7 L -5, -1 L 5,-1 L 5,-7 L 8,-7 Z" fill="#8b5cf6"/>
-      <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#ffffff" text-anchor="middle">1.30 kW</text>
-      <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.5">VERBRAUCH</text>
+      <path d="M 0,-15 L -8,-8 L -5,-8 L -5,0 L 5,0 L 5,-8 L 8,-8 Z" fill="#f3f4f6"/>
+      <text x="0" y="12" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" fill="#ffffff" text-anchor="middle">1.30 kW</text>
+      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">VERBRAUCH</text>
+    </g>
+
+    <!-- ============================================== -->
+    <!-- 4. BATTERY NODE (BOTTOM CENTER)                -->
+    <!-- ============================================== -->
+    <g transform="translate(270, 226)">
+      <circle cx="0" cy="0" r="36" fill="#1e1e24" stroke="#f06292" stroke-width="2.5" filter="url(#bubble-shadow)"/>
+      <!-- Battery SoC Badge Inside Circle -->
+      <g transform="translate(-16, -15)">
+        <!-- Battery Icon with Bolt -->
+        <rect x="0" y="1" width="11" height="6" rx="1.5" fill="none" stroke="#f06292" stroke-width="1.2"/>
+        <rect x="11" y="2.5" width="1.5" height="3" fill="#f06292"/>
+        <text x="17" y="7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="800" fill="#f06292">82%</text>
+      </g>
+      <!-- Down arrow & charging value -->
+      <g transform="translate(-17, 10)">
+        <path d="M 0,-3 L 0,4 M -3,1 L 0,4 L 3,1" stroke="#f06292" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      </g>
+      <text x="5" y="12" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#f06292" text-anchor="middle">1.45 kW</text>
+      <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#9ca3af" text-anchor="middle" letter-spacing="0.4">BATTERIE</text>
     </g>
   </g>
 
   <!-- ========================================== -->
-  <!-- PV STRINGS BAR -->
+  <!-- PV STRINGS BAR                             -->
   <!-- ========================================== -->
-  <g transform="translate(35, 345)">
+  <g transform="translate(35, 350)">
     <rect x="0" y="0" width="470" height="52" rx="10" fill="rgba(255, 255, 255, 0.03)" stroke="rgba(255, 255, 255, 0.06)" stroke-width="1"/>
     
     <!-- String 1 -->
     <rect x="12" y="8" width="140" height="36" rx="6" fill="rgba(0, 0, 0, 0.2)"/>
-    <rect x="12" y="8" width="3" height="36" rx="1.5" fill="#eab308"/>
+    <rect x="12" y="8" width="3" height="36" rx="1.5" fill="#ff9800"/>
     <text x="24" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="600" fill="#9ca3af">String 1</text>
     <text x="24" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#ffffff">2.45 kW</text>
     <text x="110" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="500" fill="#6b7280">340 V</text>
 
     <!-- String 2 -->
     <rect x="165" y="8" width="140" height="36" rx="6" fill="rgba(0, 0, 0, 0.2)"/>
-    <rect x="165" y="8" width="3" height="36" rx="1.5" fill="#eab308"/>
+    <rect x="165" y="8" width="3" height="36" rx="1.5" fill="#ff9800"/>
     <text x="177" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="600" fill="#9ca3af">String 2</text>
     <text x="177" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#ffffff">2.40 kW</text>
     <text x="263" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="500" fill="#6b7280">335 V</text>
 
-    <!-- String 3 (Inactive/Standby Badge) -->
+    <!-- String 3 (Standby) -->
     <rect x="318" y="8" width="140" height="36" rx="6" fill="rgba(0, 0, 0, 0.2)"/>
     <rect x="318" y="8" width="3" height="36" rx="1.5" fill="#6b7280"/>
     <text x="330" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="600" fill="#9ca3af">String 3</text>
@@ -173,15 +224,15 @@
   </g>
 
   <!-- ========================================== -->
-  <!-- KPI STATS (AUTARKIE & EIGENVERBRAUCH) -->
+  <!-- KPI STATS (AUTARKIE & EIGENVERBRAUCH)      -->
   <!-- ========================================== -->
-  <g transform="translate(35, 410)">
+  <g transform="translate(35, 415)">
     <!-- 1. Autarkie Card -->
     <rect x="0" y="0" width="228" height="66" rx="12" fill="rgba(255, 255, 255, 0.03)" stroke="rgba(255, 255, 255, 0.06)" stroke-width="1"/>
     <!-- Circular Ring (96%) -->
     <circle cx="34" cy="33" r="20" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="4.5"/>
-    <circle cx="34" cy="33" r="20" fill="none" stroke="#10b981" stroke-width="4.5" stroke-dasharray="120, 126" stroke-linecap="round" transform="rotate(-90 34 33)"/>
-    <text x="34" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="900" fill="#10b981" text-anchor="middle">96%</text>
+    <circle cx="34" cy="33" r="20" fill="none" stroke="#488fc2" stroke-width="4.5" stroke-dasharray="120, 126" stroke-linecap="round" transform="rotate(-90 34 33)"/>
+    <text x="34" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="900" fill="#488fc2" text-anchor="middle">96%</text>
     <text x="68" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#9ca3af" letter-spacing="0.4">AUTARKIE HEUTE</text>
     <text x="68" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#ffffff">Sehr hoch 🌟</text>
 
@@ -189,48 +240,47 @@
     <rect x="242" y="0" width="228" height="66" rx="12" fill="rgba(255, 255, 255, 0.03)" stroke="rgba(255, 255, 255, 0.06)" stroke-width="1"/>
     <!-- Circular Ring (78%) -->
     <circle cx="276" cy="33" r="20" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="4.5"/>
-    <circle cx="276" cy="33" r="20" fill="none" stroke="#06b6d4" stroke-width="4.5" stroke-dasharray="98, 126" stroke-linecap="round" transform="rotate(-90 276 33)"/>
-    <text x="276" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="900" fill="#06b6d4" text-anchor="middle">78%</text>
+    <circle cx="276" cy="33" r="20" fill="none" stroke="#4db6ac" stroke-width="4.5" stroke-dasharray="98, 126" stroke-linecap="round" transform="rotate(-90 276 33)"/>
+    <text x="276" y="37" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="900" fill="#4db6ac" text-anchor="middle">78%</text>
     <text x="310" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#9ca3af" letter-spacing="0.4">EIGENVERBRAUCH</text>
     <text x="310" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#ffffff">78.2% genutzt 🌿</text>
   </g>
 
   <!-- ========================================== -->
-  <!-- DAILY TOTALS CHIPS -->
+  <!-- DAILY TOTALS CHIPS                         -->
   <!-- ========================================== -->
-  <g transform="translate(35, 490)">
+  <g transform="translate(35, 495)">
     <!-- Chip 1: Erzeugung -->
     <rect x="0" y="0" width="108" height="46" rx="8" fill="rgba(0, 0, 0, 0.25)"/>
-    <rect x="0" y="0" width="108" height="2.5" fill="#eab308"/>
+    <rect x="0" y="0" width="108" height="2.5" fill="#ff9800"/>
     <text x="10" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="600" fill="#9ca3af">Erzeugung</text>
-    <text x="10" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#eab308">24.6 kWh</text>
+    <text x="10" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#ff9800">24.6 kWh</text>
 
     <!-- Chip 2: Verbrauch -->
     <rect x="120" y="0" width="108" height="46" rx="8" fill="rgba(0, 0, 0, 0.25)"/>
-    <rect x="120" y="0" width="108" height="2.5" fill="#8b5cf6"/>
+    <rect x="120" y="0" width="108" height="2.5" fill="#0284c7"/>
     <text x="130" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="600" fill="#9ca3af">Verbrauch</text>
-    <text x="130" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#8b5cf6">8.4 kWh</text>
+    <text x="130" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#38bdf8">8.4 kWh</text>
 
     <!-- Chip 3: Einspeisung -->
     <rect x="242" y="0" width="108" height="46" rx="8" fill="rgba(0, 0, 0, 0.25)"/>
-    <rect x="242" y="0" width="108" height="2.5" fill="#10b981"/>
+    <rect x="242" y="0" width="108" height="2.5" fill="#488fc2"/>
     <text x="252" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="600" fill="#9ca3af">Einspeisung</text>
-    <text x="252" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#10b981">16.2 kWh</text>
+    <text x="252" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#488fc2">16.2 kWh</text>
 
     <!-- Chip 4: Netzbezug -->
     <rect x="362" y="0" width="108" height="46" rx="8" fill="rgba(0, 0, 0, 0.25)"/>
-    <rect x="362" y="0" width="108" height="2.5" fill="#f97316"/>
+    <rect x="362" y="0" width="108" height="2.5" fill="#5a6fe8"/>
     <text x="372" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="600" fill="#9ca3af">Netzbezug</text>
-    <text x="372" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#f97316">0.8 kWh</text>
+    <text x="372" y="35" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="800" fill="#5a6fe8">0.8 kWh</text>
   </g>
 
   <!-- ========================================== -->
-  <!-- QUICK CONTROL BUTTONS -->
+  <!-- QUICK CONTROL BUTTONS                      -->
   <!-- ========================================== -->
-  <g transform="translate(35, 555)">
+  <g transform="translate(35, 558)">
     <!-- Wintermodus Button (AUS) -->
     <rect x="0" y="0" width="228" height="40" rx="10" fill="rgba(255, 255, 255, 0.04)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1"/>
-    <!-- Snowflake Icon -->
     <g transform="translate(48, 12)">
       <path d="M 8,0 L 8,16 M 0,8 L 16,8 M 2,2 L 14,14 M 2,14 L 14,2" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/>
     </g>
@@ -238,7 +288,6 @@
 
     <!-- Schnellladung Button (AUS) -->
     <rect x="242" y="0" width="228" height="40" rx="10" fill="rgba(255, 255, 255, 0.04)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1"/>
-    <!-- Lightning Icon -->
     <g transform="translate(295, 12)">
       <path d="M 7,0 L 1,9 L 7,9 L 5,16 L 13,6 L 7,6 Z" fill="#9ca3af"/>
     </g>
