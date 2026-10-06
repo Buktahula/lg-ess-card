@@ -2,7 +2,7 @@
 
 Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und Schnellsteuerung für **LG ESS Solar-Wechselrichter & Batteriespeicher** in Home Assistant Lovelace.
 
-![Version](https://img.shields.io/badge/version-1.1.9-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
