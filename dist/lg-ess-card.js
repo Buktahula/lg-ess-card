@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.1.8";
+const CARD_VERSION = "1.1.9";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
   "color: white; background: #ff9800; font-weight: 700; border-radius: 3px 0 0 3px;",
@@ -195,7 +195,7 @@ class LgEssCard extends HTMLElement {
           --batt-out-color: var(--energy-battery-out-color, #4db6ac);
           --grid-buy-color: var(--energy-grid-consumption-color, #488fc2);
           --grid-sell-color: var(--energy-grid-return-color, #8353d1);
-          --house-color: var(--energy-non-fossil-color, #0284c7);
+          --house-color: var(--energy-house-color, #38bdf8);
 
           /* UI Contrast & Theme Variables */
           --card-radius: var(--ha-card-border-radius, 16px);
@@ -387,16 +387,16 @@ class LgEssCard extends HTMLElement {
         /* 3. House Node - 100% Symmetrical 76px Size, Border & Glow */
         .node-house .circle.house-active,
         .node-house .circle {
-          border-color: var(--house-color, #0284c7);
+          border-color: var(--house-color, #38bdf8);
           background-color: var(--node-surface, #22222a);
-          background-image: linear-gradient(rgba(2, 132, 199, 0.12), rgba(2, 132, 199, 0.12));
-          box-shadow: 0 0 14px rgba(2, 132, 199, 0.4);
+          background-image: linear-gradient(rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.12));
+          box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
         }
 
         .node-house .circle.house-idle {
-          border-color: rgba(2, 132, 199, 0.35);
+          border-color: rgba(56, 189, 248, 0.35);
           background-color: var(--node-surface, #22222a);
-          background-image: linear-gradient(rgba(2, 132, 199, 0.05), rgba(2, 132, 199, 0.05));
+          background-image: linear-gradient(rgba(56, 189, 248, 0.05), rgba(56, 189, 248, 0.05));
           box-shadow: none;
         }
 
@@ -460,7 +460,7 @@ class LgEssCard extends HTMLElement {
         }
 
         .node-house .label {
-          color: #38bdf8;
+          color: var(--house-color, #38bdf8);
         }
 
         .node-batt .label {
@@ -923,7 +923,7 @@ class LgEssCard extends HTMLElement {
           <!-- 3. Node Home (Right: 83%, 50%) -->
           <div class="node node-house" id="node-house">
             <div class="circle" id="circle-house">
-              <svg class="node-icon" viewBox="0 0 24 24" style="color: #38bdf8;">
+              <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--house-color, #38bdf8);">
                 <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
               </svg>
               <span class="val" id="val-house">0.00 kW</span>
@@ -1010,9 +1010,9 @@ class LgEssCard extends HTMLElement {
               <div class="chip-lbl">Erzeugung</div>
               <div class="chip-val" id="chip-pv" style="color: var(--solar-color);">0.0 kWh</div>
             </div>
-            <div class="chip" style="--chip-border: #38bdf8;">
+            <div class="chip" style="--chip-border: var(--house-color, #38bdf8);">
               <div class="chip-lbl">Verbrauch</div>
-              <div class="chip-val" id="chip-house" style="color: #38bdf8;">0.0 kWh</div>
+              <div class="chip-val" id="chip-house" style="color: var(--house-color, #38bdf8);">0.0 kWh</div>
             </div>
             <div class="chip" style="--chip-border: var(--grid-sell-color);">
               <div class="chip-lbl">Einspeisung</div>
