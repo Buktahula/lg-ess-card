@@ -1,0 +1,22 @@
+{
+  "name": "lg-ess-card",
+  "version": "1.0.0",
+  "description": "A modern, animated energy flow, battery state and quick control Lovelace card for LG ESS solar inverters in Home Assistant.",
+  "keywords": [
+    "home-assistant",
+    "homeassistant",
+    "lovelace",
+    "custom-card",
+    "hacs",
+    "lg-ess",
+    "solar",
+    "energy-flow"
+  ],
+  "main": "lg-ess-card.js",
+  "author": "buktahula",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/buktahula/lg-ess-card.git"
+  }
+}
