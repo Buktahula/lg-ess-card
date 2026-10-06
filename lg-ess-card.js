@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.1.1";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
   "color: white; background: #ff9800; font-weight: 700; border-radius: 3px 0 0 3px;",
@@ -194,7 +194,6 @@ class LgEssCard extends HTMLElement {
     const isGridSelling = gridSell > 0.02;
     const isBattCharging = battCharge > 0.02;
     const isBattDischarging = battDischarge > 0.02;
-    const isHouseConsuming = housePower > 0.02;
 
     const solarToGrid = isGridSelling ? gridSell : 0;
     const solarToBattery = isBattCharging ? Math.min(pvPower, battCharge) : 0;
@@ -330,53 +329,71 @@ class LgEssCard extends HTMLElement {
           box-shadow: 0 0 8px ${activeState ? "var(--energy-grid-return-color, #10b981)" : "#ef4444"};
         }
 
-        /* ========================================== */
-        /* Home Assistant Energy Distribution Layout */
-        /* ========================================== */
-        .card-content {
+        /* ============================================================== */
+        /* Energy Flow Container (100% Symmetrical Absolute Coordinates)  */
+        /* ============================================================== */
+        .flow-container {
           position: relative;
-          direction: ltr;
-          max-width: 480px;
-          margin: 0 auto;
-          padding: 6px 0 10px 0;
+          width: 100%;
+          max-width: 460px;
+          margin: 6px auto 10px auto;
+          aspect-ratio: 1.55 / 1;
+          min-height: 270px;
         }
 
-        .row {
-          display: flex;
-          justify-content: space-between;
-          max-width: 480px;
-          margin: 0 auto;
+        svg.flow-svg {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 1;
         }
 
-        .circle-container {
+        /* Node Elements (Centered via Translate) */
+        .node {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          z-index: 2;
           display: flex;
           flex-direction: column;
           align-items: center;
-          z-index: 2;
           cursor: pointer;
           user-select: none;
+          transition: transform 0.2s ease;
         }
 
-        .circle-container.solar {
-          margin: 0 4px;
-          height: 125px;
+        .node:hover {
+          transform: translate(-50%, -50%) scale(1.05);
         }
 
-        .circle-container.battery {
-          height: 115px;
-          justify-content: flex-end;
+        /* Perfectly Symmetrical Percentage Placements */
+        .node-solar {
+          top: 18%;
+          left: 50%;
         }
 
-        .spacer {
-          width: 80px;
+        .node-batt {
+          top: 82%;
+          left: 50%;
+        }
+
+        .node-grid {
+          top: 50%;
+          left: 17%;
+        }
+
+        .node-house {
+          top: 50%;
+          left: 83%;
         }
 
         .circle {
-          width: 80px;
-          height: 80px;
+          width: 76px;
+          height: 76px;
           border-radius: 50%;
           box-sizing: border-box;
-          border: 2px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+          border: 2.5px solid var(--divider-color, rgba(255, 255, 255, 0.12));
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -384,14 +401,11 @@ class LgEssCard extends HTMLElement {
           text-align: center;
           position: relative;
           background: var(--ha-card-background, var(--card-background-color, #1e1e24));
-          transition: transform 0.2s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+          transition: border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
-        .circle:hover {
-          transform: scale(1.05);
-        }
-
-        .circle-container.solar .circle {
+        .node-solar .circle {
           border-color: var(--energy-solar-color);
           ${isSolarActive ? "box-shadow: 0 0 14px rgba(255, 152, 0, 0.35);" : ""}
         }
@@ -416,12 +430,12 @@ class LgEssCard extends HTMLElement {
           box-shadow: 0 0 14px rgba(77, 182, 172, 0.35);
         }
 
-        .home .circle {
+        .node-house .circle {
           border-width: 0;
         }
 
-        .home .circle.border {
-          border-width: 2px;
+        .node-house .circle.border {
+          border-width: 2.5px;
           border-color: var(--divider-color, rgba(255, 255, 255, 0.12));
         }
 
@@ -469,12 +483,19 @@ class LgEssCard extends HTMLElement {
 
         .label {
           color: var(--secondary-text-color, #9ca3af);
-          font-size: 0.75rem;
-          font-weight: 600;
-          height: 20px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          height: 18px;
           margin-top: 4px;
-          letter-spacing: 0.03em;
+          letter-spacing: 0.04em;
           text-align: center;
+          text-transform: uppercase;
+        }
+
+        .node-solar .label {
+          margin-top: 0;
+          margin-bottom: 4px;
+          order: -1;
         }
 
         .battery-soc {
@@ -495,7 +516,7 @@ class LgEssCard extends HTMLElement {
         .battery-in, .return {
           display: inline-flex;
           align-items: center;
-          font-size: 0.78rem;
+          font-size: 0.76rem;
           font-weight: 700;
         }
 
@@ -506,13 +527,13 @@ class LgEssCard extends HTMLElement {
         .battery-out {
           display: inline-flex;
           align-items: center;
-          font-size: 0.78rem;
+          font-size: 0.76rem;
           font-weight: 700;
           color: var(--energy-battery-out-color);
         }
 
         .battery-idle {
-          font-size: 0.78rem;
+          font-size: 0.76rem;
           font-weight: 600;
           color: var(--secondary-text-color, #9ca3af);
         }
@@ -524,7 +545,7 @@ class LgEssCard extends HTMLElement {
         .consumption {
           display: inline-flex;
           align-items: center;
-          font-size: 0.78rem;
+          font-size: 0.76rem;
           font-weight: 700;
           color: var(--energy-grid-consumption-color);
         }
@@ -536,32 +557,7 @@ class LgEssCard extends HTMLElement {
           margin-right: 2px;
         }
 
-        /* SVG Connecting Lines Layer */
-        .lines {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          width: 100%;
-          height: 146px;
-          display: flex;
-          justify-content: center;
-          padding: 0 16px 16px;
-          box-sizing: border-box;
-          pointer-events: none;
-          z-index: 1;
-        }
-
-        .lines.high {
-          bottom: 100px;
-          height: 156px;
-        }
-
-        .lines svg {
-          width: calc(100% - 160px);
-          height: 100%;
-          max-width: 340px;
-        }
-
+        /* SVG Paths */
         path {
           fill: none;
           stroke: var(--divider-color, rgba(255, 255, 255, 0.12));
@@ -571,37 +567,37 @@ class LgEssCard extends HTMLElement {
 
         path.active.solar {
           stroke: var(--energy-solar-color);
-          stroke-width: 2;
+          stroke-width: 2.2;
         }
 
         path.active.return {
           stroke: var(--energy-grid-return-color);
-          stroke-width: 2;
+          stroke-width: 2.2;
         }
 
         path.active.battery-solar {
           stroke: var(--energy-battery-in-color);
-          stroke-width: 2;
+          stroke-width: 2.2;
         }
 
         path.active.battery-house {
           stroke: var(--energy-battery-out-color);
-          stroke-width: 2;
+          stroke-width: 2.2;
         }
 
         path.active.grid {
           stroke: var(--energy-grid-consumption-color);
-          stroke-width: 2;
+          stroke-width: 2.2;
         }
 
         path.active.battery-to-grid {
           stroke: var(--energy-grid-return-color);
-          stroke-width: 2;
+          stroke-width: 2.2;
         }
 
         path.active.battery-from-grid {
           stroke: var(--energy-grid-consumption-color);
-          stroke-width: 2;
+          stroke-width: 2.2;
         }
 
         /* Moving Particle Dots */
@@ -856,241 +852,233 @@ class LgEssCard extends HTMLElement {
           </div>
         </div>
 
-        <!-- Official Home Assistant Energy Distribution Visualizer -->
-        <div class="card-content">
-          <!-- Row 1: Solar Node -->
-          <div class="row">
-            <div class="spacer"></div>
-            <div class="circle-container solar" id="node-solar">
-              <span class="label">Solar</span>
-              <div class="circle" style="color: var(--energy-solar-color);">
-                <svg class="node-icon" viewBox="0 0 24 24">
-                  <path d="M12 2L14.39 5.42C13.65 5.15 12.84 5 12 5C11.16 5 10.35 5.15 9.61 5.42L12 2M12 7A5 5 0 0 1 17 12A5 5 0 0 1 12 17A5 5 0 0 1 7 12A5 5 0 0 1 12 7M12 9A3 3 0 0 0 9 12A3 3 0 0 0 12 15A3 3 0 0 0 15 12A3 3 0 0 0 12 9Z" />
-                </svg>
-                <span class="val">${this._formatPower(pvPower)}</span>
-              </div>
+        <!-- Official Home Assistant Energy Distribution Visualizer (100% Symmetrical) -->
+        <div class="flow-container">
+          <svg class="flow-svg" viewBox="0 0 100 100">
+            <!-- Inactive Subtle Lines -->
+            <path d="M 28,50 L 72,50" />
+            <path d="M 44,71 C 44,56 34,56 28,56" />
+            <path d="M 56,71 C 56,56 66,56 72,56" />
+            <path d="M 44,29 C 44,44 34,44 28,44" />
+            <path d="M 56,29 C 56,44 66,44 72,44" />
+            <path d="M 50,29 L 50,71" />
+
+            <!-- Active Paths -->
+            <!-- Solar to Battery (Vertical) -->
+            <path id="path-solar-batt" class="battery-solar ${hasSolarToBattery ? 'active' : ''}"
+                  d="M 50,29 L 50,71" vector-effect="non-scaling-stroke" />
+
+            <!-- Solar to Grid (Curved) -->
+            <path id="path-solar-grid" class="return ${hasSolarToGrid ? 'active' : ''}"
+                  d="M 44,29 C 44,44 34,44 28,44" vector-effect="non-scaling-stroke" />
+
+            <!-- Solar to Home (Curved) -->
+            <path id="path-solar-home" class="solar ${hasSolarToHome ? 'active' : ''}"
+                  d="M 56,29 C 56,44 66,44 72,44" vector-effect="non-scaling-stroke" />
+
+            <!-- Battery to Home (Curved) -->
+            <path id="path-batt-home" class="battery-house ${hasBatteryToHome ? 'active' : ''}"
+                  d="M 56,71 C 56,56 66,56 72,56" vector-effect="non-scaling-stroke" />
+
+            <!-- Battery to Grid / Grid to Battery -->
+            <path id="path-batt-grid" class="${hasBatteryToGrid ? 'battery-to-grid active' : hasBatteryFromGrid ? 'battery-from-grid active' : ''}"
+                  d="M 44,71 C 44,56 34,56 28,56" vector-effect="non-scaling-stroke" />
+
+            <!-- Grid to Home (Horizontal) -->
+            <path id="path-grid-home" class="grid ${hasGridToHome ? 'active' : ''}"
+                  d="M 28,50 L 72,50" vector-effect="non-scaling-stroke" />
+
+            <!-- Animated Motion Dots -->
+            ${allowAnim && hasSolarToGrid ? `
+              <circle r="1" class="return" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(solarToGrid)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
+                </animateMotion>
+              </circle>
+              <circle r="1" class="return" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(solarToGrid)}s" begin="-${(getDuration(solarToGrid) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-solar-grid" xlink:href="#path-solar-grid"/>
+                </animateMotion>
+              </circle>
+            ` : ''}
+
+            ${allowAnim && hasSolarToHome ? `
+              <circle r="1" class="solar" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(solarToHome)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
+                </animateMotion>
+              </circle>
+              <circle r="1" class="solar" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(solarToHome)}s" begin="-${(getDuration(solarToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-solar-home" xlink:href="#path-solar-home"/>
+                </animateMotion>
+              </circle>
+            ` : ''}
+
+            ${allowAnim && hasSolarToBattery ? `
+              <circle r="1" class="battery-solar" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(solarToBattery)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
+                </animateMotion>
+              </circle>
+              <circle r="1" class="battery-solar" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(solarToBattery)}s" begin="-${(getDuration(solarToBattery) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-solar-batt" xlink:href="#path-solar-batt"/>
+                </animateMotion>
+              </circle>
+            ` : ''}
+
+            ${allowAnim && hasBatteryToHome ? `
+              <circle r="1" class="battery-house" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(batteryToHome)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
+                </animateMotion>
+              </circle>
+              <circle r="1" class="battery-house" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(batteryToHome)}s" begin="-${(getDuration(batteryToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-batt-home" xlink:href="#path-batt-home"/>
+                </animateMotion>
+              </circle>
+            ` : ''}
+
+            ${allowAnim && hasBatteryFromGrid ? `
+              <circle r="1" class="battery-from-grid" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(gridToBattery)}s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
+                  <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
+                </animateMotion>
+              </circle>
+            ` : ''}
+
+            ${allowAnim && hasBatteryToGrid ? `
+              <circle r="1" class="battery-to-grid" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(batteryToGrid)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-batt-grid" xlink:href="#path-batt-grid"/>
+                </animateMotion>
+              </circle>
+            ` : ''}
+
+            ${allowAnim && hasGridToHome ? `
+              <circle r="1" class="grid" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(gridToHome)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
+                </animateMotion>
+              </circle>
+              <circle r="1" class="grid" vector-effect="non-scaling-stroke">
+                <animateMotion dur="${getDuration(gridToHome)}s" begin="-${(getDuration(gridToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
+                  <mpath href="#path-grid-home" xlink:href="#path-grid-home"/>
+                </animateMotion>
+              </circle>
+            ` : ''}
+          </svg>
+
+          <!-- 1. Node Solar (Top Center: 50%, 18%) -->
+          <div class="node node-solar" id="node-solar">
+            <span class="label">Solar</span>
+            <div class="circle" style="color: var(--energy-solar-color);">
+              <svg class="node-icon" viewBox="0 0 24 24">
+                <path d="M12 2L14.39 5.42C13.65 5.15 12.84 5 12 5C11.16 5 10.35 5.15 9.61 5.42L12 2M12 7A5 5 0 0 1 17 12A5 5 0 0 1 12 17A5 5 0 0 1 7 12A5 5 0 0 1 12 7M12 9A3 3 0 0 0 9 12A3 3 0 0 0 12 15A3 3 0 0 0 15 12A3 3 0 0 0 12 9Z" />
+              </svg>
+              <span class="val">${this._formatPower(pvPower)}</span>
             </div>
-            <div class="spacer"></div>
           </div>
 
-          <!-- Row 2: Grid and Home Nodes -->
-          <div class="row">
-            <!-- Grid Circle -->
-            <div class="circle-container grid" id="node-grid">
-              <div class="circle ${isGridSelling ? 'selling' : isGridBuying ? 'buying' : ''}">
-                <svg class="node-icon" viewBox="0 0 24 24" style="color: ${isGridSelling ? 'var(--energy-grid-return-color)' : isGridBuying ? 'var(--energy-grid-consumption-color)' : 'inherit'};">
-                  <path d="M8.29,6.29L12,2.59L15.71,6.29L14.29,7.71L13,6.41V9.3L15.78,11H18V13H15.93L17.93,18H20V20H17.8L19.8,22H17.15L15.35,20H8.65L6.85,22H4.2L6.2,20H4V18H6.07L8.07,13H6V11H8.22L11,9.3V6.41L9.71,7.71L8.29,6.29M11,11.15L8.85,12.5H15.15L13,11.15V11H11V11.15M8.38,14.5L6.98,18H17.02L15.62,14.5H8.38Z"/>
-                </svg>
-                ${isGridSelling ? `
-                  <span class="return">
-                    <svg class="small-arrow" viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>
-                    ${this._formatPower(gridSell)}
-                  </span>
-                ` : ''}
-                <span class="consumption">
-                  ${isGridBuying ? `
-                    <svg class="small-arrow" viewBox="0 0 24 24"><path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/></svg>
-                  ` : ''}
-                  ${this._formatPower(gridBuy)}
+          <!-- 2. Node Grid (Left: 17%, 50%) -->
+          <div class="node node-grid" id="node-grid">
+            <div class="circle ${isGridSelling ? 'selling' : isGridBuying ? 'buying' : ''}">
+              <svg class="node-icon" viewBox="0 0 24 24" style="color: ${isGridSelling ? 'var(--energy-grid-return-color)' : isGridBuying ? 'var(--energy-grid-consumption-color)' : 'inherit'};">
+                <path d="M8.29,6.29L12,2.59L15.71,6.29L14.29,7.71L13,6.41V9.3L15.78,11H18V13H15.93L17.93,18H20V20H17.8L19.8,22H17.15L15.35,20H8.65L6.85,22H4.2L6.2,20H4V18H6.07L8.07,13H6V11H8.22L11,9.3V6.41L9.71,7.71L8.29,6.29M11,11.15L8.85,12.5H15.15L13,11.15V11H11V11.15M8.38,14.5L6.98,18H17.02L15.62,14.5H8.38Z"/>
+              </svg>
+              ${isGridSelling ? `
+                <span class="return">
+                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>
+                  ${this._formatPower(gridSell)}
                 </span>
-              </div>
-              <span class="label">${isGridSelling ? 'Einspeisung' : 'Netz'}</span>
+              ` : ''}
+              <span class="consumption">
+                ${isGridBuying ? `
+                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/></svg>
+                ` : ''}
+                ${this._formatPower(gridBuy)}
+              </span>
             </div>
+            <span class="label">${isGridSelling ? 'Einspeisung' : 'Netz'}</span>
+          </div>
 
-            <!-- Home Circle -->
-            <div class="circle-container home" id="node-house">
-              <div class="circle ${hasRing ? '' : 'border'}">
-                <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--primary-text-color);">
-                  <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
+          <!-- 3. Node Home (Right: 83%, 50%) -->
+          <div class="node node-house" id="node-house">
+            <div class="circle ${hasRing ? '' : 'border'}">
+              <svg class="node-icon" viewBox="0 0 24 24" style="color: var(--primary-text-color);">
+                <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
+              </svg>
+              <span class="val">${this._formatPower(housePower)}</span>
+
+              ${hasRing ? `
+                <svg class="circle-ring" viewBox="0 0 80 80">
+                  ${solarArc > 0 ? `
+                    <circle
+                      class="solar"
+                      cx="40"
+                      cy="40"
+                      r="38"
+                      stroke-dasharray="${solarArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
+                      stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
+                      shape-rendering="geometricPrecision"
+                    />
+                  ` : ''}
+                  ${battArc > 0 ? `
+                    <circle
+                      class="battery"
+                      cx="40"
+                      cy="40"
+                      r="38"
+                      stroke-dasharray="${battArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - battArc).toFixed(2)}"
+                      stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - battArc - (solarArc || 0)).toFixed(2)}"
+                      shape-rendering="geometricPrecision"
+                    />
+                  ` : ''}
+                  ${gridArc > 0 ? `
+                    <circle
+                      class="grid"
+                      cx="40"
+                      cy="40"
+                      r="38"
+                      stroke-dasharray="${gridArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - gridArc).toFixed(2)}"
+                      stroke-dashoffset="0"
+                      shape-rendering="geometricPrecision"
+                    />
+                  ` : ''}
                 </svg>
-                <span class="val">${this._formatPower(housePower)}</span>
-
-                <!-- Home Energy Mix Multi-Arc Ring -->
-                ${hasRing ? `
-                  <svg class="circle-ring" viewBox="0 0 80 80">
-                    ${solarArc > 0 ? `
-                      <circle
-                        class="solar"
-                        cx="40"
-                        cy="40"
-                        r="38"
-                        stroke-dasharray="${solarArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
-                        stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - solarArc).toFixed(2)}"
-                        shape-rendering="geometricPrecision"
-                      />
-                    ` : ''}
-                    ${battArc > 0 ? `
-                      <circle
-                        class="battery"
-                        cx="40"
-                        cy="40"
-                        r="38"
-                        stroke-dasharray="${battArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - battArc).toFixed(2)}"
-                        stroke-dashoffset="-${(CIRCLE_CIRCUMFERENCE - battArc - (solarArc || 0)).toFixed(2)}"
-                        shape-rendering="geometricPrecision"
-                      />
-                    ` : ''}
-                    ${gridArc > 0 ? `
-                      <circle
-                        class="grid"
-                        cx="40"
-                        cy="40"
-                        r="38"
-                        stroke-dasharray="${gridArc.toFixed(2)} ${(CIRCLE_CIRCUMFERENCE - gridArc).toFixed(2)}"
-                        stroke-dashoffset="0"
-                        shape-rendering="geometricPrecision"
-                      />
-                    ` : ''}
-                  </svg>
-                ` : ''}
-              </div>
-              <span class="label">Verbrauch</span>
+              ` : ''}
             </div>
+            <span class="label">Verbrauch</span>
           </div>
 
-          <!-- Row 3: Battery Node -->
-          <div class="row">
-            <div class="spacer"></div>
-            <div class="circle-container battery" id="node-batt">
-              <div class="circle ${isBattCharging ? 'charging' : isBattDischarging ? 'discharging' : ''}">
-                <div class="battery-soc" style="color: ${isBattCharging ? 'var(--energy-battery-in-color)' : isBattDischarging ? 'var(--energy-battery-out-color)' : 'inherit'};">
-                  <svg viewBox="0 0 24 24">
-                    ${this._getBatteryIcon(soc, isBattCharging)}
-                  </svg>
-                  <span>${soc}%</span>
-                </div>
-                ${isBattCharging ? `
-                  <span class="battery-in">
-                    <svg class="small-arrow" viewBox="0 0 24 24"><path d="M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z"/></svg>
-                    ${this._formatPower(battCharge)}
-                  </span>
-                ` : ''}
-                ${isBattDischarging ? `
-                  <span class="battery-out">
-                    <svg class="small-arrow" viewBox="0 0 24 24"><path d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z"/></svg>
-                    ${this._formatPower(battDischarge)}
-                  </span>
-                ` : ''}
-                ${!isBattCharging && !isBattDischarging ? `
-                  <span class="battery-idle">0.00 kW</span>
-                ` : ''}
+          <!-- 4. Node Battery (Bottom Center: 50%, 82%) -->
+          <div class="node node-batt" id="node-batt">
+            <div class="circle ${isBattCharging ? 'charging' : isBattDischarging ? 'discharging' : ''}">
+              <div class="battery-soc" style="color: ${isBattCharging ? 'var(--energy-battery-in-color)' : isBattDischarging ? 'var(--energy-battery-out-color)' : 'inherit'};">
+                <svg viewBox="0 0 24 24">
+                  ${this._getBatteryIcon(soc, isBattCharging)}
+                </svg>
+                <span>${soc}%</span>
               </div>
-              <span class="label">Batterie</span>
+              ${isBattCharging ? `
+                <span class="battery-in">
+                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M11,4H13V16L18.5,10.5L19.92,11.92L12,19.84L4.08,11.92L5.5,10.5L11,16V4Z"/></svg>
+                  ${this._formatPower(battCharge)}
+                </span>
+              ` : ''}
+              ${isBattDischarging ? `
+                <span class="battery-out">
+                  <svg class="small-arrow" viewBox="0 0 24 24"><path d="M13,20H11V8L5.5,13.5L4.08,12.08L12,4.16L19.92,12.08L18.5,13.5L13,8V20Z"/></svg>
+                  ${this._formatPower(battDischarge)}
+                </span>
+              ` : ''}
+              ${!isBattCharging && !isBattDischarging ? `
+                <span class="battery-idle">0.00 kW</span>
+              ` : ''}
             </div>
-            <div class="spacer"></div>
-          </div>
-
-          <!-- SVG Flow Lines (Exact Home Assistant Energy Dashboard Geometry) -->
-          <div class="lines high">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-              <!-- Path 1: Solar to Grid (Return) -->
-              <path id="return" class="return ${hasSolarToGrid ? 'active' : ''}"
-                    d="M45,0 v15 c0,35 -10,30 -30,30 h-20" vector-effect="non-scaling-stroke"></path>
-
-              <!-- Path 2: Solar to Home -->
-              <path id="solar" class="solar ${hasSolarToHome ? 'active' : ''}"
-                    d="M55,0 v15 c0,35 10,30 30,30 h20" vector-effect="non-scaling-stroke"></path>
-
-              <!-- Path 3: Solar to Battery -->
-              <path id="battery-solar" class="battery-solar ${hasSolarToBattery ? 'active' : ''}"
-                    d="M50,0 V100" vector-effect="non-scaling-stroke"></path>
-
-              <!-- Path 4: Battery to Home -->
-              <path id="battery-house" class="battery-house ${hasBatteryToHome ? 'active' : ''}"
-                    d="M55,100 v-15 c0,-35 10,-30 30,-30 h20" vector-effect="non-scaling-stroke"></path>
-
-              <!-- Path 5: Battery to Grid / Grid to Battery -->
-              <path id="battery-grid" class="${hasBatteryToGrid ? 'battery-to-grid active' : hasBatteryFromGrid ? 'battery-from-grid active' : ''}"
-                    d="M45,100 v-15 c0,-35 -10,-30 -30,-30 h-20" vector-effect="non-scaling-stroke"></path>
-
-              <!-- Path 6: Grid to Home -->
-              <path id="grid" class="grid ${hasGridToHome ? 'active' : ''}"
-                    d="M0,50 H100" vector-effect="non-scaling-stroke"></path>
-
-              <!-- ============================================== -->
-              <!-- Animated Particle Motion Dots                  -->
-              <!-- ============================================== -->
-              ${allowAnim && hasSolarToGrid ? `
-                <circle r="1" class="return" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(solarToGrid)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#return" xlink:href="#return"/>
-                  </animateMotion>
-                </circle>
-                <circle r="1" class="return" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(solarToGrid)}s" begin="-${(getDuration(solarToGrid) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#return" xlink:href="#return"/>
-                  </animateMotion>
-                </circle>
-              ` : ''}
-
-              ${allowAnim && hasSolarToHome ? `
-                <circle r="1" class="solar" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(solarToHome)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#solar" xlink:href="#solar"/>
-                  </animateMotion>
-                </circle>
-                <circle r="1" class="solar" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(solarToHome)}s" begin="-${(getDuration(solarToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#solar" xlink:href="#solar"/>
-                  </animateMotion>
-                </circle>
-              ` : ''}
-
-              ${allowAnim && hasSolarToBattery ? `
-                <circle r="1" class="battery-solar" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(solarToBattery)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#battery-solar" xlink:href="#battery-solar"/>
-                  </animateMotion>
-                </circle>
-                <circle r="1" class="battery-solar" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(solarToBattery)}s" begin="-${(getDuration(solarToBattery) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#battery-solar" xlink:href="#battery-solar"/>
-                  </animateMotion>
-                </circle>
-              ` : ''}
-
-              ${allowAnim && hasBatteryToHome ? `
-                <circle r="1" class="battery-house" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(batteryToHome)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#battery-house" xlink:href="#battery-house"/>
-                  </animateMotion>
-                </circle>
-                <circle r="1" class="battery-house" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(batteryToHome)}s" begin="-${(getDuration(batteryToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#battery-house" xlink:href="#battery-house"/>
-                  </animateMotion>
-                </circle>
-              ` : ''}
-
-              ${allowAnim && hasBatteryFromGrid ? `
-                <circle r="1" class="battery-from-grid" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(gridToBattery)}s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear">
-                    <mpath href="#battery-grid" xlink:href="#battery-grid"/>
-                  </animateMotion>
-                </circle>
-              ` : ''}
-
-              ${allowAnim && hasBatteryToGrid ? `
-                <circle r="1" class="battery-to-grid" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(batteryToGrid)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#battery-grid" xlink:href="#battery-grid"/>
-                  </animateMotion>
-                </circle>
-              ` : ''}
-
-              ${allowAnim && hasGridToHome ? `
-                <circle r="1" class="grid" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(gridToHome)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#grid" xlink:href="#grid"/>
-                  </animateMotion>
-                </circle>
-                <circle r="1" class="grid" vector-effect="non-scaling-stroke">
-                  <animateMotion dur="${getDuration(gridToHome)}s" begin="-${(getDuration(gridToHome) / 2).toFixed(2)}s" repeatCount="indefinite" calcMode="linear">
-                    <mpath href="#grid" xlink:href="#grid"/>
-                  </animateMotion>
-                </circle>
-              ` : ''}
-            </svg>
+            <span class="label">Batterie</span>
           </div>
         </div>
 
