@@ -49,6 +49,10 @@ const DEFAULT_ENTITY_PAIRS = {
   self_consumption: ["sensor.energy_day_self_consumption_rate", "sensor.eigenverbrauchsrate_heute"],
   switch_winter_mode: ["switch.winter_mode", "switch.lgess_switch_winter_mode"],
   switch_fastcharge: ["switch.fastcharge", "switch.lgess_switch_fastcharge"],
+  select_charging_mode: ["select.charging_mode", "select.lgess_select_charging_mode"],
+  switch_backup_mode: ["switch.backup_mode", "switch.lgess_switch_backup_mode"],
+  switch_charge_from_grid: ["switch.charge_from_grid", "switch.lgess_switch_charge_from_grid"],
+  number_backup_soc: ["number.backup_soc", "number.lgess_number_backup_soc"],
   switch_active: ["switch.active", "switch.lgess_switch_active"],
 };
 
