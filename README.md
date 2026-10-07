@@ -2,7 +2,7 @@
 
 Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und Schnellsteuerung für **LG ESS Solar-Wechselrichter & Batteriespeicher** in Home Assistant Lovelace.
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
 ![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -27,8 +27,11 @@ Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und 
 * **📊 Tagesstatistiken & KPIs (Theme-integriert):**
   * Kreisförmige Ring-Anzeige für **Autarkiegrad (%)** und **Eigenverbrauchsrate (%)**.
   * Tagesübersicht: Erzeugte Solarenergie, Hausverbrauch, Netzeinspeisung und Netzbezug.
-* **❄️ Schnellsteuerung integriert:**
-  * Direkte Umschalt-Buttons für **Wintermodus** und **Schnellladung** mit Live-Rückmeldung.
+* **⚡ Intelligente Schnellsteuerung (Mobile 2er-Raster):**
+  * **Lademodus-Durchschaltung:** Ein Klick wechselt nahtlos zwischen **Batteriepflege** 🌿, **Schnellladung** ⚡ und **Wettervorhersage** ⛅ (mit farblicher Indikation und Rückfall-Kompatibilität zu `switch.fastcharge`).
+  * **Wintermodus:** ❄️ Schnelles Aktivieren/Deaktivieren des Winter-Erhaltungsmodus.
+  * **Backup-Modus:** 🛡️ Umschalten des Notstrom-/Backup-Betriebs inkl. Anzeige des Mindest-SoC.
+  * **Netzladung:** 🔌 Direktes Ein-/Ausschalten des Aufladens aus dem Stromnetz (z. B. für dynamische Stromtarife wie Tibber).
 * **🪄 Zero-Config Auto-Erkennung:**
   * Erkennt automatisch alle Sensoren des [LG ESS Add-ons](https://github.com/Buktahula/hassio-addons/tree/main/LG_ESS) – egal ob `entity_naming: legacy` (z. B. `sensor.actual_grid_buy`) oder `modern` (z. B. `sensor.aktueller_netzbezug`) eingestellt ist!
 * **🎨 100 % Home Assistant Theme-kompatibel:**
@@ -82,7 +85,7 @@ title: "Mein LG ESS Speicher"
 power_unit: "kW" # "kW" (Standard) oder "W"
 show_strings: true # PV-Strings Detailschublade anzeigen (true/false)
 show_stats: true # Tagesstatistiken (Autarkie, Eigenverbrauch) anzeigen (true/false)
-show_controls: true # Schalterleiste (Wintermodus, Schnellladung) anzeigen (true/false)
+show_controls: true # Schnellsteuerung (true/false)
 
 # Optional: Manuelle Entitäten-Übersteuerung (nur nötig bei abweichenden Namen)
 entities:
@@ -92,7 +95,11 @@ entities:
   grid_buy: sensor.actual_grid_buy
   grid_sell: sensor.actual_grid_sell
   switch_winter_mode: switch.winter_mode
+  select_charging_mode: select.charging_mode
   switch_fastcharge: switch.fastcharge
+  switch_backup_mode: switch.backup_mode
+  switch_charge_from_grid: switch.charge_from_grid
+  number_backup_soc: number.backup_soc
 ```
 
 ---

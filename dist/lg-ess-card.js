@@ -6,7 +6,7 @@
  * License: MIT
  */
 
-const CARD_VERSION = "1.2.1";
+const CARD_VERSION = "1.3.0";
 const CARD_LOGO = "data:image/png;base64,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";
 console.info(
   `%c LG-ESS-CARD %c v${CARD_VERSION} `,
@@ -49,7 +49,20 @@ const DEFAULT_ENTITY_PAIRS = {
   self_consumption: ["sensor.energy_day_self_consumption_rate", "sensor.eigenverbrauchsrate_heute"],
   switch_winter_mode: ["switch.winter_mode", "switch.lgess_switch_winter_mode"],
   switch_fastcharge: ["switch.fastcharge", "switch.lgess_switch_fastcharge"],
+  select_charging_mode: ["select.charging_mode", "select.lgess_select_charging_mode"],
+  switch_backup_mode: ["switch.backup_mode", "switch.lgess_switch_backup_mode"],
+  switch_charge_from_grid: ["switch.charge_from_grid", "switch.lgess_switch_charge_from_grid"],
+  number_backup_soc: ["number.backup_soc", "number.lgess_number_backup_soc"],
   switch_active: ["switch.active", "switch.lgess_switch_active"],
+};
+
+const ICONS = {
+  bolt: `<path d="M11 15H6L13 1V9H18L11 23V15Z"/>`,
+  leaf: `<path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A9.49 9.49 0 0 0 12 21c7 0 11-8 11-8s-2-5-6-5zm-5 11c-1.8 0-3.35-.6-4.5-1.6 1.8-3.4 4.5-5.9 8.5-6.4-1 4-2.5 8-4 8z"/>`,
+  weather: `<path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>`,
+  snowflake: `<path d="M12 2V6L10 4L8.5 5.5L12 9L15.5 5.5L14 4L12 6V2M12 15L8.5 18.5L10 20L12 18V22H12L12 18L14 20L15.5 18.5L12 15M2 12H6L4 10L5.5 8.5L9 12L5.5 15.5L4 14L6 12H2M15 12L18.5 8.5L20 10L18 12H22V12H18L20 14L18.5 15.5L15 12Z"/>`,
+  shield: `<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v5h-2V7zm1 10.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>`,
+  plug: `<path d="M16 7V3h-2v4h-4V3H8v4C6.34 7 5 8.34 5 10v4.5C5 16.71 6.79 18.5 9 18.5V22h6v-3.5c2.21 0 4-1.79 4-4V10c0-1.66-1.34-3-3-3h0z"/>`,
 };
 
 class LgEssCard extends HTMLElement {
@@ -162,6 +175,22 @@ class LgEssCard extends HTMLElement {
     const s = this._getEntityState(key);
     if (!s || !this._hass) return;
     this._hass.callService("switch", "toggle", { entity_id: s.entity_id });
+  }
+
+  _cycleChargingMode() {
+    const s = this._getEntityState("select_charging_mode");
+    if (s && s.attributes && Array.isArray(s.attributes.options) && s.attributes.options.length > 0) {
+      const options = s.attributes.options;
+      const currentIdx = options.indexOf(s.state);
+      const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % options.length : 0;
+      const nextOption = options[nextIdx];
+      this._hass.callService("select", "select_option", {
+        entity_id: s.entity_id,
+        option: nextOption,
+      });
+      return;
+    }
+    this._toggleSwitch("switch_fastcharge");
   }
 
   _getBatteryIcon(soc, isCharging) {
@@ -773,18 +802,18 @@ class LgEssCard extends HTMLElement {
 
         /* Controls Bar */
         .controls-bar {
-          display: flex;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
           gap: 10px;
           margin-top: 16px;
         }
 
         .btn-ctrl {
-          flex: 1;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          padding: 10px 14px;
+          padding: 10px 12px;
           border-radius: 10px;
           background: var(--surface-elevated);
           border: 1px solid var(--surface-border);
@@ -793,6 +822,9 @@ class LgEssCard extends HTMLElement {
           font-weight: 600;
           cursor: pointer;
           user-select: none;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
           transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
@@ -810,6 +842,24 @@ class LgEssCard extends HTMLElement {
           background: rgba(245, 158, 11, 0.18);
           border-color: #f59e0b;
           color: #f59e0b;
+        }
+
+        .btn-ctrl.active-green {
+          background: rgba(34, 197, 94, 0.18);
+          border-color: #22c55e;
+          color: #22c55e;
+        }
+
+        .btn-ctrl.active-purple {
+          background: rgba(168, 85, 247, 0.18);
+          border-color: #a855f7;
+          color: #a855f7;
+        }
+
+        .btn-ctrl.active-cyan {
+          background: rgba(6, 182, 212, 0.18);
+          border-color: #06b6d4;
+          color: #06b6d4;
         }
 
         .btn-icon {
@@ -1044,18 +1094,32 @@ class LgEssCard extends HTMLElement {
         <!-- Optional: Quick Controls Bar -->
         ${this._config.show_controls !== false ? `
           <div class="controls-bar">
+            <div class="btn-ctrl" id="btn-mode">
+              <svg class="btn-icon" id="btn-mode-icon" viewBox="0 0 24 24" fill="currentColor">
+                ${ICONS.bolt}
+              </svg>
+              <span id="btn-mode-text">Lademodus</span>
+            </div>
+
             <div class="btn-ctrl" id="btn-winter">
               <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2V6L10 4L8.5 5.5L12 9L15.5 5.5L14 4L12 6V2M12 15L8.5 18.5L10 20L12 18V22H12L12 18L14 20L15.5 18.5L12 15M2 12H6L4 10L5.5 8.5L9 12L5.5 15.5L4 14L6 12H2M15 12L18.5 8.5L20 10L18 12H22V12H18L20 14L18.5 15.5L15 12Z"/>
+                ${ICONS.snowflake}
               </svg>
               <span id="btn-winter-text">Wintermodus AUS</span>
             </div>
 
-            <div class="btn-ctrl" id="btn-fastcharge">
+            <div class="btn-ctrl" id="btn-backup" style="display: none;">
               <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11 15H6L13 1V9H18L11 23V15Z"/>
+                ${ICONS.shield}
               </svg>
-              <span id="btn-fastcharge-text">Schnellladung AUS</span>
+              <span id="btn-backup-text">Backup AUS</span>
+            </div>
+
+            <div class="btn-ctrl" id="btn-gridcharge" style="display: none;">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                ${ICONS.plug}
+              </svg>
+              <span id="btn-gridcharge-text">Netzladung AUS</span>
             </div>
           </div>
         ` : ''}
@@ -1078,8 +1142,10 @@ class LgEssCard extends HTMLElement {
       if (arrow) arrow.textContent = this._showStrings ? "▲ Schließen" : "▼ Details";
     });
 
+    this.shadowRoot.getElementById("btn-mode")?.addEventListener("click", () => this._cycleChargingMode());
     this.shadowRoot.getElementById("btn-winter")?.addEventListener("click", () => this._toggleSwitch("switch_winter_mode"));
-    this.shadowRoot.getElementById("btn-fastcharge")?.addEventListener("click", () => this._toggleSwitch("switch_fastcharge"));
+    this.shadowRoot.getElementById("btn-backup")?.addEventListener("click", () => this._toggleSwitch("switch_backup_mode"));
+    this.shadowRoot.getElementById("btn-gridcharge")?.addEventListener("click", () => this._toggleSwitch("switch_charge_from_grid"));
 
     this._initialized = true;
     this._update();
@@ -1319,15 +1385,77 @@ class LgEssCard extends HTMLElement {
 
     // 10. Controls Updates
     if (this._config.show_controls !== false) {
+      // Winter Mode
       const btnWinter = this.shadowRoot.getElementById("btn-winter");
       if (btnWinter) btnWinter.className = `btn-ctrl ${winterModeState ? 'active-blue' : ''}`;
       const btnWinterText = this.shadowRoot.getElementById("btn-winter-text");
       if (btnWinterText) btnWinterText.textContent = `Wintermodus ${winterModeState ? 'AN' : 'AUS'}`;
 
-      const btnFast = this.shadowRoot.getElementById("btn-fastcharge");
-      if (btnFast) btnFast.className = `btn-ctrl ${fastchargeState ? 'active-amber' : ''}`;
-      const btnFastText = this.shadowRoot.getElementById("btn-fastcharge-text");
-      if (btnFastText) btnFastText.textContent = `Schnellladung ${fastchargeState ? 'AN' : 'AUS'}`;
+      // Charging Mode / Fast Charge
+      const btnMode = this.shadowRoot.getElementById("btn-mode") || this.shadowRoot.getElementById("btn-fastcharge");
+      const btnModeText = this.shadowRoot.getElementById("btn-mode-text") || this.shadowRoot.getElementById("btn-fastcharge-text");
+      const btnModeIcon = this.shadowRoot.getElementById("btn-mode-icon");
+
+      const chargingModeState = this._getEntityState("select_charging_mode");
+      if (chargingModeState && chargingModeState.state && chargingModeState.state !== "unavailable" && chargingModeState.state !== "unknown") {
+        const mode = chargingModeState.state.toLowerCase();
+        if (mode.includes("schnell") || mode.includes("fast")) {
+          if (btnMode) btnMode.className = "btn-ctrl active-amber";
+          if (btnModeText) btnModeText.textContent = "Schnellladung";
+          if (btnModeIcon) btnModeIcon.innerHTML = ICONS.bolt;
+        } else if (mode.includes("wetter") || mode.includes("weather")) {
+          if (btnMode) btnMode.className = "btn-ctrl active-cyan";
+          if (btnModeText) btnModeText.textContent = "Wettervorhersage";
+          if (btnModeIcon) btnModeIcon.innerHTML = ICONS.weather;
+        } else {
+          // Batteriepflege / Battery Care
+          if (btnMode) btnMode.className = "btn-ctrl active-green";
+          if (btnModeText) btnModeText.textContent = "Batteriepflege";
+          if (btnModeIcon) btnModeIcon.innerHTML = ICONS.leaf;
+        }
+      } else {
+        // Fallback: switch_fastcharge
+        if (btnMode) btnMode.className = `btn-ctrl ${fastchargeState ? 'active-amber' : ''}`;
+        if (btnModeText) btnModeText.textContent = `Schnellladung ${fastchargeState ? 'AN' : 'AUS'}`;
+        if (btnModeIcon) btnModeIcon.innerHTML = ICONS.bolt;
+      }
+
+      // Backup Mode
+      const btnBackup = this.shadowRoot.getElementById("btn-backup");
+      const btnBackupText = this.shadowRoot.getElementById("btn-backup-text");
+      const backupSwitchState = this._getEntityState("switch_backup_mode");
+      const gridChargeSwitchState = this._getEntityState("switch_charge_from_grid");
+
+      if (btnBackup) {
+        if (!backupSwitchState) {
+          btnBackup.style.display = "none";
+        } else {
+          btnBackup.style.display = "flex";
+          btnBackup.style.gridColumn = (!gridChargeSwitchState ? "span 2" : "auto");
+          const isBackupOn = backupSwitchState.state === "on";
+          btnBackup.className = `btn-ctrl ${isBackupOn ? 'active-purple' : ''}`;
+          const backupSoc = this._getNumericValue("number_backup_soc");
+          if (backupSoc > 0 && isBackupOn) {
+            btnBackupText.textContent = `Backup (${backupSoc}%)`;
+          } else {
+            btnBackupText.textContent = `Backup ${isBackupOn ? 'AN' : 'AUS'}`;
+          }
+        }
+      }
+
+      // Grid Charge / Aufladen vom Netz
+      const btnGridCharge = this.shadowRoot.getElementById("btn-gridcharge");
+      const btnGridChargeText = this.shadowRoot.getElementById("btn-gridcharge-text");
+      if (btnGridCharge) {
+        if (!gridChargeSwitchState) {
+          btnGridCharge.style.display = "none";
+        } else {
+          btnGridCharge.style.display = "flex";
+          const isGridChargeOn = gridChargeSwitchState.state === "on";
+          btnGridCharge.className = `btn-ctrl ${isGridChargeOn ? 'active-cyan' : ''}`;
+          btnGridChargeText.textContent = `Netzladung ${isGridChargeOn ? 'AN' : 'AUS'}`;
+        }
+      }
     }
   }
 
@@ -1489,7 +1617,7 @@ class LgEssCardEditor extends HTMLElement {
         </label>
         <label class="checkbox-row">
           <input type="checkbox" id="chk-controls" data-config="show_controls" ${this._config.show_controls !== false ? 'checked' : ''} />
-          <span>Schalterleiste (Wintermodus & Schnellladung) anzeigen</span>
+          <span>Schalterleiste (Lademodus, Wintermodus, Backup, Netzladung) anzeigen</span>
         </label>
         <label class="checkbox-row">
           <input type="checkbox" id="chk-anim" data-config="animation" ${this._config.animation !== false ? 'checked' : ''} />
