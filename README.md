@@ -2,7 +2,7 @@
 
 Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und Schnellsteuerung für **LG ESS Solar-Wechselrichter & Batteriespeicher** in Home Assistant Lovelace.
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
 ![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -22,6 +22,11 @@ Eine moderne, animierte Energiefluss-Visualisierung, Batterie-Statusanzeige und 
 * **🔋 Batterie-Visualisierung:**
   * Dynamisches Batterie-Icon mit Lade-Symbol und Füllstand (0–100 %).
   * Anzeige von Lade- und Entladeleistung mit Pfeil-Indikatoren in Echtzeit.
+* **⚙️ Wechselrichter & Speicher Einstellungen (Aufklappbar):**
+  * **Einspeisebegrenzung:** Schnelle Stepper-Regelung (− / + 5 %) von 0 bis 100 % für die maximale Wirkleistungseinspeisung ins öffentliche Netz.
+  * **Min. Ladezustand (Tiefentladeschutz):** Stepper (− / + 5 %) von 0 bis 50 % zum Schutz der Batterie.
+  * **Backup Mindest-SoC:** Stepper (− / + 5 %) von 5 bis 100 % zur Definition der Notstrom-Reserve.
+  * **Wintermodus Zeitraum:** Direkte Anzeige & Klick-Editierung der Datumsangaben (z. B. `01.11` – `28.02`) mit Indikator für den aktiven Wintermodus.
 * **☀️ PV-Strings Detailschublade:**
   * Aufklappbare Übersicht für **String 1, String 2 und String 3** mit Einzelleistungen (kW/W) und String-Spannungen (V).
 * **📊 Tagesstatistiken & KPIs (Theme-integriert):**
@@ -86,6 +91,7 @@ power_unit: "kW" # "kW" (Standard) oder "W"
 show_strings: true # PV-Strings Detailschublade anzeigen (true/false)
 show_stats: true # Tagesstatistiken (Autarkie, Eigenverbrauch) anzeigen (true/false)
 show_controls: true # Schnellsteuerung (true/false)
+show_settings: true # Einstellungen-Schublade (Einspeisung, Safety & Backup SoC, Winterdaten) anzeigen (true/false)
 
 # Optional: Manuelle Entitäten-Übersteuerung (nur nötig bei abweichenden Namen)
 entities:
@@ -99,7 +105,12 @@ entities:
   switch_fastcharge: switch.fastcharge
   switch_backup_mode: switch.backup_mode
   switch_charge_from_grid: switch.charge_from_grid
+  number_feed_in_limitation: number.feed_in_limitation
+  number_battery_safety_soc: number.battery_safety_soc
   number_backup_soc: number.backup_soc
+  text_winter_mode_start: text.winter_mode_start
+  text_winter_mode_end: text.winter_mode_end
+  binary_sensor_winter_mode_active: binary_sensor.winter_mode_active
 ```
 
 ---

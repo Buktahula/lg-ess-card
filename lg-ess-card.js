@@ -53,6 +53,11 @@ const DEFAULT_ENTITY_PAIRS = {
   switch_backup_mode: ["switch.backup_mode", "switch.lgess_switch_backup_mode"],
   switch_charge_from_grid: ["switch.charge_from_grid", "switch.lgess_switch_charge_from_grid"],
   number_backup_soc: ["number.backup_soc", "number.lgess_number_backup_soc"],
+  number_battery_safety_soc: ["number.battery_safety_soc", "number.lgess_number_battery_safety_soc"],
+  number_feed_in_limitation: ["number.feed_in_limitation", "number.lgess_number_feed_in_limitation"],
+  text_winter_mode_start: ["text.winter_mode_start", "text.lgess_text_winter_mode_start"],
+  text_winter_mode_end: ["text.winter_mode_end", "text.lgess_text_winter_mode_end"],
+  binary_sensor_winter_mode_active: ["binary_sensor.winter_mode_active", "binary_sensor.lgess_binary_sensor_winter_mode_active"],
   switch_active: ["switch.active", "switch.lgess_switch_active"],
 };
 
@@ -63,6 +68,7 @@ const ICONS = {
   snowflake: `<path d="M12 2V6L10 4L8.5 5.5L12 9L15.5 5.5L14 4L12 6V2M12 15L8.5 18.5L10 20L12 18V22H12L12 18L14 20L15.5 18.5L12 15M2 12H6L4 10L5.5 8.5L9 12L5.5 15.5L4 14L6 12H2M15 12L18.5 8.5L20 10L18 12H22V12H18L20 14L18.5 15.5L15 12Z"/>`,
   shield: `<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v5h-2V7zm1 10.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>`,
   plug: `<path d="M16 7V3h-2v4h-4V3H8v4C6.34 7 5 8.34 5 10v4.5C5 16.71 6.79 18.5 9 18.5V22h6v-3.5c2.21 0 4-1.79 4-4V10c0-1.66-1.34-3-3-3h0z"/>`,
+  gear: `<path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/>`,
 };
 
 class LgEssCard extends HTMLElement {
@@ -73,6 +79,7 @@ class LgEssCard extends HTMLElement {
     this._hass = null;
     this._initialized = false;
     this._showStrings = false;
+    this._showSettings = false;
     this._isGridSelling = false;
   }
 
@@ -84,6 +91,7 @@ class LgEssCard extends HTMLElement {
       energy_unit: "kWh",
       show_strings: true,
       show_controls: true,
+      show_settings: true,
       show_stats: true,
       animation: true,
       ...config,
@@ -191,6 +199,22 @@ class LgEssCard extends HTMLElement {
       return;
     }
     this._toggleSwitch("switch_fastcharge");
+  }
+
+  _stepNumber(key, delta, minBound = 0, maxBound = 100) {
+    const s = this._getEntityState(key);
+    if (!s || !this._hass) return;
+    const currentVal = parseFloat(s.state);
+    if (isNaN(currentVal)) return;
+    const min = s.attributes?.min !== undefined ? parseFloat(s.attributes.min) : minBound;
+    const max = s.attributes?.max !== undefined ? parseFloat(s.attributes.max) : maxBound;
+    let nextVal = currentVal + delta;
+    nextVal = Math.min(max, Math.max(min, nextVal));
+    nextVal = Math.round(nextVal * 100) / 100;
+    this._hass.callService("number", "set_value", {
+      entity_id: s.entity_id,
+      value: nextVal,
+    });
   }
 
   _getBatteryIcon(soc, isCharging) {
@@ -867,6 +891,185 @@ class LgEssCard extends HTMLElement {
           height: 16px;
           flex-shrink: 0;
         }
+
+        /* Settings Drawer */
+        .settings-drawer {
+          background: var(--surface-elevated);
+          border-radius: 12px;
+          padding: 10px 14px;
+          margin-top: 12px;
+          border: 1px solid var(--surface-border);
+        }
+
+        .settings-toggle {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          user-select: none;
+          color: var(--text-med);
+          transition: color 0.15s ease;
+        }
+
+        .settings-toggle:hover {
+          color: var(--text-high);
+        }
+
+        .settings-toggle-title {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .toggle-icon {
+          width: 15px;
+          height: 15px;
+          flex-shrink: 0;
+        }
+
+        .settings-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 10px;
+        }
+
+        .setting-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: rgba(0, 0, 0, 0.18);
+          border: 1px solid var(--surface-border);
+          border-radius: 9px;
+          padding: 8px 10px;
+          gap: 8px;
+        }
+
+        .row-feedin {
+          border-left: 3.5px solid var(--grid-sell-color, #8353d1);
+        }
+
+        .row-safety {
+          border-left: 3.5px solid #f59e0b;
+        }
+
+        .row-backupsoc {
+          border-left: 3.5px solid #a855f7;
+        }
+
+        .row-winter-dates {
+          border-left: 3.5px solid #38bdf8;
+        }
+
+        .setting-info {
+          display: flex;
+          flex-direction: column;
+          cursor: pointer;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .setting-title {
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: var(--text-high);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .setting-sub {
+          font-size: 0.67rem;
+          color: var(--text-med);
+          margin-top: 1px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .stepper {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          flex-shrink: 0;
+        }
+
+        .step-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          border: 1px solid var(--surface-border);
+          background: var(--surface-elevated);
+          color: var(--text-high);
+          font-size: 1rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          user-select: none;
+          transition: background 0.15s ease, border-color 0.15s ease;
+          padding: 0;
+          line-height: 1;
+        }
+
+        .step-btn:hover {
+          background: rgba(255, 255, 255, 0.18);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .step-btn:active {
+          transform: scale(0.94);
+        }
+
+        .step-val {
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: var(--text-high);
+          min-width: 42px;
+          text-align: center;
+          font-variant-numeric: tabular-nums;
+          cursor: pointer;
+          padding: 4px 6px;
+          border-radius: 6px;
+          transition: background 0.15s ease;
+        }
+
+        .step-val:hover {
+          background: rgba(255, 255, 255, 0.08);
+        }
+
+        .date-chips {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          flex-shrink: 0;
+        }
+
+        .date-chip {
+          background: var(--surface-elevated);
+          border: 1px solid var(--surface-border);
+          border-radius: 7px;
+          padding: 4px 8px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: var(--text-high);
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .date-chip:hover {
+          background: rgba(255, 255, 255, 0.18);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .date-sep {
+          color: var(--text-med);
+          font-weight: 600;
+          font-size: 0.8rem;
+        }
       </style>
 
       <ha-card>
@@ -1123,6 +1326,74 @@ class LgEssCard extends HTMLElement {
             </div>
           </div>
         ` : ''}
+
+        <!-- Optional: Settings Drawer -->
+        ${this._config.show_settings !== false ? `
+          <div class="settings-drawer" id="settings-drawer" style="display: none;">
+            <div class="settings-toggle" id="settings-toggle">
+              <span class="settings-toggle-title">
+                <svg class="toggle-icon" viewBox="0 0 24 24" fill="currentColor">
+                  ${ICONS.gear}
+                </svg>
+                <span>Einstellungen</span>
+              </span>
+              <span id="settings-arrow">${this._showSettings ? '▲ Schließen' : '▼ Anpassen'}</span>
+            </div>
+            <div class="settings-grid" id="settings-grid" style="display: ${this._showSettings ? 'flex' : 'none'};">
+              <!-- 1. Einspeisebegrenzung -->
+              <div class="setting-row row-feedin" id="row-feedin" style="display: none;">
+                <div class="setting-info" id="info-feedin" title="Klicken für Detail-Dialog">
+                  <div class="setting-title">Einspeisebegrenzung</div>
+                  <div class="setting-sub">Wirkleistungseinspeisung</div>
+                </div>
+                <div class="stepper">
+                  <button class="step-btn" id="btn-feedin-down" title="-5%">−</button>
+                  <span class="step-val" id="val-feedin" title="Klicken für Detail-Dialog">100%</span>
+                  <button class="step-btn" id="btn-feedin-up" title="+5%">+</button>
+                </div>
+              </div>
+
+              <!-- 2. Batterie Mindest-Ladezustand (Safety SoC) -->
+              <div class="setting-row row-safety" id="row-safety" style="display: none;">
+                <div class="setting-info" id="info-safety" title="Klicken für Detail-Dialog">
+                  <div class="setting-title">Min. Ladezustand</div>
+                  <div class="setting-sub">Tiefentladeschutz (Safety Limit)</div>
+                </div>
+                <div class="stepper">
+                  <button class="step-btn" id="btn-safety-down" title="-5%">−</button>
+                  <span class="step-val" id="val-safety" title="Klicken für Detail-Dialog">5%</span>
+                  <button class="step-btn" id="btn-safety-up" title="+5%">+</button>
+                </div>
+              </div>
+
+              <!-- 3. Backup Mindest-SoC -->
+              <div class="setting-row row-backupsoc" id="row-backupsoc" style="display: none;">
+                <div class="setting-info" id="info-backupsoc" title="Klicken für Detail-Dialog">
+                  <div class="setting-title">Backup Mindest-SoC</div>
+                  <div class="setting-sub">Notstrom-Reserve</div>
+                </div>
+                <div class="stepper">
+                  <button class="step-btn" id="btn-backupsoc-down" title="-5%">−</button>
+                  <span class="step-val" id="val-backupsoc" title="Klicken für Detail-Dialog">5%</span>
+                  <button class="step-btn" id="btn-backupsoc-up" title="+5%">+</button>
+                </div>
+              </div>
+
+              <!-- 4. Wintermodus Zeitraum -->
+              <div class="setting-row row-winter-dates" id="row-winter-dates" style="display: none;">
+                <div class="setting-info" id="info-winter-dates" title="Klicken für Wintermodus Schalter">
+                  <div class="setting-title">Wintermodus Zeitraum</div>
+                  <div class="setting-sub" id="winter-dates-status">Inaktiv</div>
+                </div>
+                <div class="date-chips">
+                  <span class="date-chip" id="chip-winter-start" title="Startdatum bearbeiten">01.11</span>
+                  <span class="date-sep">–</span>
+                  <span class="date-chip" id="chip-winter-end" title="Enddatum bearbeiten">28.02</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
       </ha-card>
     `;
 
@@ -1140,6 +1411,69 @@ class LgEssCard extends HTMLElement {
       const arrow = this.shadowRoot.getElementById("strings-arrow");
       if (grid) grid.style.display = this._showStrings ? "grid" : "none";
       if (arrow) arrow.textContent = this._showStrings ? "▲ Schließen" : "▼ Details";
+    });
+
+    this.shadowRoot.getElementById("settings-toggle")?.addEventListener("click", () => {
+      this._showSettings = !this._showSettings;
+      const grid = this.shadowRoot.getElementById("settings-grid");
+      const arrow = this.shadowRoot.getElementById("settings-arrow");
+      if (grid) grid.style.display = this._showSettings ? "flex" : "none";
+      if (arrow) arrow.textContent = this._showSettings ? "▲ Schließen" : "▼ Anpassen";
+    });
+
+    this.shadowRoot.getElementById("btn-feedin-down")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._stepNumber("number_feed_in_limitation", -5, 0, 100);
+    });
+    this.shadowRoot.getElementById("btn-feedin-up")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._stepNumber("number_feed_in_limitation", 5, 0, 100);
+    });
+    this.shadowRoot.getElementById("info-feedin")?.addEventListener("click", () => {
+      this._fireMoreInfo("number_feed_in_limitation");
+    });
+    this.shadowRoot.getElementById("val-feedin")?.addEventListener("click", () => {
+      this._fireMoreInfo("number_feed_in_limitation");
+    });
+
+    this.shadowRoot.getElementById("btn-safety-down")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._stepNumber("number_battery_safety_soc", -5, 0, 50);
+    });
+    this.shadowRoot.getElementById("btn-safety-up")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._stepNumber("number_battery_safety_soc", 5, 0, 50);
+    });
+    this.shadowRoot.getElementById("info-safety")?.addEventListener("click", () => {
+      this._fireMoreInfo("number_battery_safety_soc");
+    });
+    this.shadowRoot.getElementById("val-safety")?.addEventListener("click", () => {
+      this._fireMoreInfo("number_battery_safety_soc");
+    });
+
+    this.shadowRoot.getElementById("btn-backupsoc-down")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._stepNumber("number_backup_soc", -5, 5, 100);
+    });
+    this.shadowRoot.getElementById("btn-backupsoc-up")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._stepNumber("number_backup_soc", 5, 5, 100);
+    });
+    this.shadowRoot.getElementById("info-backupsoc")?.addEventListener("click", () => {
+      this._fireMoreInfo("number_backup_soc");
+    });
+    this.shadowRoot.getElementById("val-backupsoc")?.addEventListener("click", () => {
+      this._fireMoreInfo("number_backup_soc");
+    });
+
+    this.shadowRoot.getElementById("chip-winter-start")?.addEventListener("click", () => {
+      this._fireMoreInfo("text_winter_mode_start");
+    });
+    this.shadowRoot.getElementById("chip-winter-end")?.addEventListener("click", () => {
+      this._fireMoreInfo("text_winter_mode_end");
+    });
+    this.shadowRoot.getElementById("info-winter-dates")?.addEventListener("click", () => {
+      this._fireMoreInfo("switch_winter_mode");
     });
 
     this.shadowRoot.getElementById("btn-mode")?.addEventListener("click", () => this._cycleChargingMode());
@@ -1457,6 +1791,95 @@ class LgEssCard extends HTMLElement {
         }
       }
     }
+
+    // 11. Settings Drawer Updates
+    if (this._config.show_settings !== false) {
+      const feedinState = this._getEntityState("number_feed_in_limitation");
+      const safetyState = this._getEntityState("number_battery_safety_soc");
+      const backupSocState = this._getEntityState("number_backup_soc");
+      const winterStartState = this._getEntityState("text_winter_mode_start");
+      const winterEndState = this._getEntityState("text_winter_mode_end");
+      const winterActiveState = this._getEntityState("binary_sensor_winter_mode_active");
+
+      const hasAnySetting = feedinState || safetyState || backupSocState || winterStartState || winterEndState;
+      const settingsDrawer = this.shadowRoot.getElementById("settings-drawer");
+      if (settingsDrawer) {
+        settingsDrawer.style.display = hasAnySetting ? "block" : "none";
+      }
+
+      // Feed-in Limit
+      const rowFeedin = this.shadowRoot.getElementById("row-feedin");
+      if (rowFeedin) {
+        if (!feedinState) {
+          rowFeedin.style.display = "none";
+        } else {
+          rowFeedin.style.display = "flex";
+          const valFeedin = this.shadowRoot.getElementById("val-feedin");
+          if (valFeedin) {
+            const num = parseFloat(feedinState.state);
+            valFeedin.textContent = isNaN(num) ? `${feedinState.state}%` : `${Math.round(num)}%`;
+          }
+        }
+      }
+
+      // Safety SoC
+      const rowSafety = this.shadowRoot.getElementById("row-safety");
+      if (rowSafety) {
+        if (!safetyState) {
+          rowSafety.style.display = "none";
+        } else {
+          rowSafety.style.display = "flex";
+          const valSafety = this.shadowRoot.getElementById("val-safety");
+          if (valSafety) {
+            const num = parseFloat(safetyState.state);
+            valSafety.textContent = isNaN(num) ? `${safetyState.state}%` : `${Math.round(num)}%`;
+          }
+        }
+      }
+
+      // Backup SoC
+      const rowBackupSoc = this.shadowRoot.getElementById("row-backupsoc");
+      if (rowBackupSoc) {
+        if (!backupSocState) {
+          rowBackupSoc.style.display = "none";
+        } else {
+          rowBackupSoc.style.display = "flex";
+          const valBackupSoc = this.shadowRoot.getElementById("val-backupsoc");
+          if (valBackupSoc) {
+            const num = parseFloat(backupSocState.state);
+            valBackupSoc.textContent = isNaN(num) ? `${backupSocState.state}%` : `${Math.round(num)}%`;
+          }
+        }
+      }
+
+      // Winter Mode Dates
+      const rowWinterDates = this.shadowRoot.getElementById("row-winter-dates");
+      if (rowWinterDates) {
+        if (!winterStartState && !winterEndState) {
+          rowWinterDates.style.display = "none";
+        } else {
+          rowWinterDates.style.display = "flex";
+          const chipStart = this.shadowRoot.getElementById("chip-winter-start");
+          if (chipStart && winterStartState) {
+            chipStart.textContent = (winterStartState.state && winterStartState.state !== "unknown" && winterStartState.state !== "unavailable")
+              ? winterStartState.state
+              : "01.11";
+          }
+          const chipEnd = this.shadowRoot.getElementById("chip-winter-end");
+          if (chipEnd && winterEndState) {
+            chipEnd.textContent = (winterEndState.state && winterEndState.state !== "unknown" && winterEndState.state !== "unavailable")
+              ? winterEndState.state
+              : "28.02";
+          }
+          const statusText = this.shadowRoot.getElementById("winter-dates-status");
+          if (statusText) {
+            const isActive = winterActiveState?.state === "on" || winterModeState;
+            statusText.textContent = isActive ? "Aktiv (Winterzeitraum)" : "Inaktiv (Normalbetrieb)";
+            statusText.style.color = isActive ? "#60a5fa" : "var(--text-low)";
+          }
+        }
+      }
+    }
   }
 
   getCardSize() {
@@ -1474,6 +1897,7 @@ class LgEssCard extends HTMLElement {
       show_strings: true,
       show_stats: true,
       show_controls: true,
+      show_settings: true,
       animation: true,
     };
   }
@@ -1547,6 +1971,10 @@ class LgEssCardEditor extends HTMLElement {
     if (chkControls) {
       chkControls.checked = this._config.show_controls !== false;
     }
+    const chkSettings = root.getElementById("chk-settings");
+    if (chkSettings) {
+      chkSettings.checked = this._config.show_settings !== false;
+    }
     const chkAnim = root.getElementById("chk-anim");
     if (chkAnim) {
       chkAnim.checked = this._config.animation !== false;
@@ -1618,6 +2046,10 @@ class LgEssCardEditor extends HTMLElement {
         <label class="checkbox-row">
           <input type="checkbox" id="chk-controls" data-config="show_controls" ${this._config.show_controls !== false ? 'checked' : ''} />
           <span>Schalterleiste (Lademodus, Wintermodus, Backup, Netzladung) anzeigen</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-settings" data-config="show_settings" ${this._config.show_settings !== false ? 'checked' : ''} />
+          <span>Einstellungen-Schublade (Einspeisung, Safety & Backup SoC, Winterdaten) anzeigen</span>
         </label>
         <label class="checkbox-row">
           <input type="checkbox" id="chk-anim" data-config="animation" ${this._config.animation !== false ? 'checked' : ''} />
